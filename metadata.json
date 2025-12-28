@@ -1,0 +1,7 @@
+{
+  "name": "Conversational AI Portfolio",
+  "description": "An immersive AI-driven portfolio experience where recruiters interact with a Gemini-powered agent to explore projects, skills, and experience through voice and chat.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
