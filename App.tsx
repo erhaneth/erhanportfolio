@@ -7,6 +7,7 @@ import MatrixRain from "./components/MatrixRain";
 import VoiceButton from "./components/VoiceButton";
 import EmailModal from "./components/EmailModal";
 import LanguageActivation from "./components/LanguageActivation";
+import MissionBriefing from "./components/MissionBriefing";
 import ContextPills, {
   generateContextFromPills,
 } from "./components/ContextPills";
@@ -29,6 +30,8 @@ const App: React.FC = () => {
   const [showContextPanel, setShowContextPanel] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [isSendingResume, setIsSendingResume] = useState(false);
+  const [showMissionBriefing, setShowMissionBriefing] = useState(false);
+  const [missionJobDescription, setMissionJobDescription] = useState("");
 
   // Context pill selections
   const [userMode, setUserMode] = useState<UserMode>(null);
@@ -271,6 +274,20 @@ const App: React.FC = () => {
                   }
                   className="w-full bg-[#020202]/50 border border-[#003B00] p-2 text-[11px] sm:text-xs text-[#00FF41] focus:outline-none focus:border-[#00FF41] h-18; resize-none mono placeholder:text-[#003B00]"
                 />
+
+                {/* Mission Briefing Button - Only for recruiters with job description */}
+                {userMode === "hiring" && customContext.trim().length > 50 && (
+                  <button
+                    onClick={() => {
+                      setMissionJobDescription(customContext);
+                      setShowMissionBriefing(true);
+                    }}
+                    className="w-full mt-2 py-2 px-3 border border-[#00FF41]/50 bg-[#00FF41]/10 text-[#00FF41] text-[10px] font-bold uppercase tracking-wider hover:bg-[#00FF41]/20 hover:border-[#00FF41] transition-all flex items-center justify-center gap-2 group"
+                  >
+                    <span className="w-2 h-2 bg-[#00FF41] group-hover:animate-pulse" />
+                    ANALYZE_MISSION_FIT
+                  </button>
+                )}
               </div>
             )}
 
@@ -345,6 +362,15 @@ const App: React.FC = () => {
         language={language}
         onClose={() => setShowActivation(false)}
       />
+
+      {/* Mission Briefing Modal */}
+      {showMissionBriefing && missionJobDescription && (
+        <MissionBriefing
+          jobDescription={missionJobDescription}
+          onProjectSelect={setActiveProject}
+          onClose={() => setShowMissionBriefing(false)}
+        />
+      )}
     </div>
   );
 };
