@@ -1,12 +1,19 @@
-
-import { PortfolioData } from './types';
+import { PortfolioData } from "./types";
 
 export const PORTFOLIO_DATA: PortfolioData = {
   name: "Erhan Gumus",
   title: "Senior AI Engineer & Full-Stack Developer",
-  about: "I specialize in building production-grade AI applications, focusing on Large Language Models, Computer Vision, and high-performance React architectures. My goal is to bridge the gap between complex research and delightful user experiences.",
+  about:
+    "I specialize in building production-grade AI applications, focusing on Large Language Models, Computer Vision, and high-performance React architectures. My goal is to bridge the gap between complex research and delightful user experiences.",
   skills: [
-    "Gemini API", "LangChain", "PyTorch", "React", "TypeScript", "Python", "Computer Vision", "RAG Systems"
+    "Gemini API",
+    "LangChain",
+    "PyTorch",
+    "React",
+    "TypeScript",
+    "Python",
+    "Computer Vision",
+    "RAG Systems",
   ],
   experience: [
     {
@@ -16,8 +23,8 @@ export const PORTFOLIO_DATA: PortfolioData = {
       highlights: [
         "Architected a multi-agent RAG system for enterprise document analysis.",
         "Optimized inference pipelines reducing latency by 45%.",
-        "Led a team of 5 engineers to deliver high-scale vision models."
-      ]
+        "Led a team of 5 engineers to deliver high-scale vision models.",
+      ],
     },
     {
       company: "Visionary Labs",
@@ -25,42 +32,57 @@ export const PORTFOLIO_DATA: PortfolioData = {
       period: "2019 - 2021",
       highlights: [
         "Developed real-time object detection systems for autonomous warehouse robots.",
-        "Implemented custom CNN architectures in PyTorch for specialized medical imaging."
-      ]
-    }
+        "Implemented custom CNN architectures in PyTorch for specialized medical imaging.",
+      ],
+    },
   ],
   projects: [
     {
-      id: "cv-vision-pro",
-      title: "VisionPro: Multi-Modal Surveillance",
-      description: "A real-time computer vision system that combines object detection with natural language descriptions using Gemini 1.5 Pro.",
-      technologies: ["PyTorch", "Gemini API", "React", "FastAPI"],
+      id: "tip-kurdish-keyboard",
+      title: "Tip: AI-Powered Kurdish Keyboard",
+      description:
+        "A high-performance iOS keyboard extension for the Kurdish (Kurmanji) language, featuring a custom-built prediction engine for real-time next-word suggestions and intelligent autocorrect.",
+      technologies: ["Swift", "UIKit", "NLP", "JSON", "iOS SDK"],
       role: "Lead Developer",
-      imageUrl: "https://picsum.photos/seed/vision/800/450",
-      codeSnippet: "import torch\nfrom PIL import Image\nmodel = torch.hub.load('ultralytics/yolov5', 'yolov5s')\nimg = Image.open('frame.jpg')\nresults = model(img)\nresults.print()",
-      impact: "Used by 3 logistics firms to monitor safety compliance in real-time."
+      imageUrl: "/projects/tip.png",
+      codeSnippet:
+        "func keyboardAwareDistance(_ s1: String, _ s2: String) -> Double {\n    // Custom Levenshtein distance that accounts for keyboard layout\n    // Adjacent keys (typos) cost 0.5, non-adjacent cost 1.0\n    let substitutionCost = adjacentKeys.contains(char2) ? 0.5 : 1.0\n    return min(dp[i-1][j] + 1.0, dp[i][j-1] + 1.0, dp[i-1][j-1] + substitutionCost)\n}",
+      impact:
+        "Developed a specialized 14MB optimized N-gram model supporting tens of thousands of unique Kurdish words, providing a native-quality typing experience for an underserved language community.",
     },
     {
-      id: "agentic-support",
-      title: "Agentic Customer Support",
-      description: "An autonomous customer service agent capable of tool-use, order tracking, and complex policy reasoning.",
-      technologies: ["LangChain", "OpenAI", "Next.js", "Redis"],
-      role: "System Architect",
-      imageUrl: "https://picsum.photos/seed/agent/800/450",
-      codeSnippet: "const agent = createReactAgent({\n  llm,\n  tools,\n  checkpoint: memory\n});",
-      impact: "Reduced human support ticket volume by 60% for a Fortune 500 retailer."
+      id: "locked-in",
+      title: "Locked In: AI-Powered Focus Blocker",
+      description:
+        "A productivity-focused browser extension that implements a strict 25-minute commitment lock on distracting websites, utilizing Google Gemini to provide real-time, context-aware motivational coaching.",
+      technologies: [
+        "React",
+        "TypeScript",
+        "Tailwind CSS",
+        "Google Gemini AI",
+        "Chrome Extension API",
+      ],
+      role: "Lead Developer",
+      imageUrl: "/projects/locked-in.png",
+      demoUrl:
+        "https://chromewebstore.google.com/detail/hjngdhjebgacmlijihhbhokdbkeiplom?utm_source=item-share-cb",
+      codeSnippet:
+        "async function generateAIMotivation(siteName, remainingMinutes) {\n  // Context-aware prompt engineering for personalized coaching\n  const prompt = `A user just tried to visit ${siteName} during a focus session. \n  Write a SHORT, encouraging message that acknowledges their urge without judgment.`\n  const response = await fetch(GEMINI_API_URL, {\n    method: 'POST',\n    headers: { 'X-goog-api-key': GEMINI_API_KEY },\n    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })\n  });\n}",
+      impact:
+        "Maintains a 5.0★ rating on the Chrome Web Store, successfully helping users overcome digital distractions through a combination of hard-blocking logic and intelligent behavioral reinforcement.",
     },
     {
       id: "secret-project-omega",
       title: "[CLASSIFIED] Project Omega",
-      description: "A highly experimental brain-computer interface simulation using neuro-symbolic AI.",
+      description:
+        "A highly experimental brain-computer interface simulation using neuro-symbolic AI.",
       technologies: ["TensorFlow", "C++", "WebAssembly"],
       role: "Researcher",
       imageUrl: "https://picsum.photos/seed/secret/800/450",
       codeSnippet: "// Restricted access to source code",
-      impact: "Won 'Innovation of the Year' at the 2023 NeuroTech Summit."
-    }
-  ]
+      impact: "Won 'Innovation of the Year' at the 2023 NeuroTech Summit.",
+    },
+  ],
 };
 
 export const INITIAL_SYSTEM_PROMPT = `
@@ -83,11 +105,12 @@ Core Behaviors:
 
 Erhan's Background:
 - Role: ${PORTFOLIO_DATA.title}
-- Skills: ${PORTFOLIO_DATA.skills.join(', ')}
+- Skills: ${PORTFOLIO_DATA.skills.join(", ")}
 - About: ${PORTFOLIO_DATA.about}
 `;
 
 export const RIDDLE_DATA = {
-  question: "I have no body, but I have a voice. I can reason without a brain. I learn from everything but remember nothing without a prompt. What am I?",
-  answer: "llm" // or language model
+  question:
+    "I have no body, but I have a voice. I can reason without a brain. I learn from everything but remember nothing without a prompt. What am I?",
+  answer: "llm", // or language model
 };

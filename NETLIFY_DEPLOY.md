@@ -31,7 +31,8 @@
    RESEND_API_KEY = your_resend_api_key_here
    ```
 
-   ⚠️ **Important**: 
+   ⚠️ **Important**:
+
    - Get your `GEMINI_API_KEY` from [Google AI Studio](https://aistudio.google.com/apikey)
    - **After adding env vars, you MUST redeploy** (go to Deploys → Trigger deploy → Deploy site)
    - Environment variables are injected at BUILD TIME, so existing deploys won't have them
@@ -65,11 +66,13 @@ After deployment, test:
 ### Build Fails
 
 **Error**: `Module not found` or `Cannot find module`
+
 - **Fix**: Make sure `package.json` has all dependencies
 - Run `npm install` locally to verify
 
 **Error**: `Environment variable not found` or `[INTERNAL_ERROR_0x99]: System instability. Connection lost.`
-- **Fix**: 
+
+- **Fix**:
   1. Check that `GEMINI_API_KEY` is set in Netlify environment variables
   2. **CRITICAL**: After adding env vars, you MUST trigger a new deploy
   3. Go to **Deploys** → **Trigger deploy** → **Deploy site**
@@ -79,7 +82,8 @@ After deployment, test:
 ### Resume Email Not Sending
 
 **Error**: `Failed to send email`
-- **Fix**: 
+
+- **Fix**:
   1. Verify `RESEND_API_KEY` is correct in Netlify
   2. Check Resend dashboard for errors
   3. Make sure your Resend account is verified
@@ -87,7 +91,8 @@ After deployment, test:
 ### Function Not Found (404)
 
 **Error**: `/api/send-resume` returns 404
-- **Fix**: 
+
+- **Fix**:
   1. Check `netlify.toml` has the redirect rule
   2. Verify `netlify/functions/send-resume.ts` exists
   3. Redeploy after making changes
@@ -136,4 +141,3 @@ netlify deploy --prod
 ---
 
 **You're all set!** 🎉 Your portfolio is ready to go live.
-
