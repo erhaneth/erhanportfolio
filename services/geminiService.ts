@@ -78,6 +78,64 @@ export const generateResponse = async (
   return response;
 };
 
+// Generate AI pitch for Mission Briefing
+export const generateMissionPitch = async (
+  jobDescription: string,
+  matchedSkills: string[],
+  relevantProjects: string[],
+  fitScore: number
+): Promise<string> => {
+  const ai = getAI();
+
+  const prompt = `You are writing an OBJECTIVE assessment of Erhan Gumus for a recruiter who just pasted a job description.
+
+JOB DESCRIPTION:
+${jobDescription.substring(0, 1500)}
+
+ANALYSIS RESULTS:
+- Fit Score: ${fitScore}%
+- Matched Skills: ${matchedSkills.join(", ") || "None detected"}
+- Relevant Projects: ${
+    relevantProjects.join(", ") || "Portfolio projects available"
+  }
+
+ERHAN'S BACKGROUND (from resume):
+- Full-stack engineer with 3 years of experience
+- React, Next.js, TypeScript, Python, Node.js
+- Built high-traffic web app for Museum of Life and Science (300k+ annual visitors)
+- Integrated OpenAI APIs for AI interview assistant with real-time feedback
+- Optimized performance: achieved 25% increase in page load speeds
+- Playwright/Jest testing, CI/CD, Heroku/Google Cloud/Vercel deployments
+- Collaborated with UX/UI designers and product managers
+- Experience in non-profit environment building tools that empower learners
+
+INSTRUCTIONS:
+Write a 2-3 sentence pitch in THIRD PERSON (use "Erhan" or "he", never "I/my").
+
+BE OBJECTIVE:
+- If fit score is HIGH (70%+): Highlight the specific skill matches confidently
+- If fit score is MEDIUM (40-69%): Acknowledge partial alignment, but note transferable skills
+- If fit score is LOW (<40%): Be honest that it's not a direct match, BUT highlight his proven track record of rapidly mastering new technologies - give a specific example like "he taught himself [X] and shipped [Y] within weeks" rather than generic "fast learner" claims
+
+NEVER use generic phrases like "passionate learner" or "quick to adapt". Instead, reference his actual pattern: building production apps in new stacks he didn't know before.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+
+    const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
+    return (
+      text ||
+      "Erhan brings strong experience in the technologies you're looking for, with a proven track record of building production-ready AI applications."
+    );
+  } catch (error) {
+    console.error("Failed to generate pitch:", error);
+    return "Erhan brings strong experience in the technologies you're looking for, with a proven track record of building production-ready AI applications.";
+  }
+};
+
 // --- Live API Helpers ---
 
 export function encode(bytes: Uint8Array) {

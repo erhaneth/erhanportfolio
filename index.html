@@ -1,143 +1,197 @@
-
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Erhan Gumus | Zion Mainframe</title>
-    <link rel="icon" type="image/png" href="/icon/erhanportfolioicon.png" />
-    <link rel="apple-touch-icon" href="/icon/erhanportfolioicon.png" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <style>
-      :root {
-        --matrix-green: #00FF41;
-        --matrix-dark-green: #003B00;
-        --matrix-dim-green: #008F11;
-        --matrix-black: #020202;
-        --crt-opacity: 0.15;
-      }
-      body {
-        font-family: 'JetBrains Mono', monospace;
-        background-color: var(--matrix-black);
-        color: var(--matrix-green);
-        margin: 0;
-        overflow: hidden;
-        height: 100vh;
-      }
-      
-      /* CRT Screen Warp & Overlays */
-      .crt-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-        z-index: 100;
-        background-size: 100% 2px, 3px 100%;
-        pointer-events: none;
-      }
 
-      .crt-vignette {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: radial-gradient(circle, transparent 60%, black 150%);
-        pointer-events: none;
-        z-index: 101;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Erhan Gumus | Zion Mainframe</title>
+  <link rel="icon" type="image/png" href="/icon/erhanportfolioicon.png" />
+  <link rel="apple-touch-icon" href="/icon/erhanportfolioicon.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --matrix-green: #00FF41;
+      --matrix-dark-green: #003B00;
+      --matrix-dim-green: #008F11;
+      --matrix-black: #020202;
+      --crt-opacity: 0.15;
+    }
 
-      @keyframes scanline {
-        0% { bottom: 100%; }
-        100% { bottom: 0%; }
-      }
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background-color: var(--matrix-black);
+      color: var(--matrix-green);
+      margin: 0;
+      overflow: hidden;
+      height: 100vh;
+    }
 
-      .scanline-bar {
-        width: 100%;
-        height: 100px;
-        z-index: 102;
-        background: linear-gradient(0deg, rgba(0, 255, 65, 0) 0%, rgba(0, 255, 65, 0.1) 50%, rgba(0, 255, 65, 0) 100%);
-        opacity: 0.1;
-        position: absolute;
+    /* CRT Screen Warp & Overlays */
+    .crt-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+      z-index: 100;
+      background-size: 100% 2px, 3px 100%;
+      pointer-events: none;
+    }
+
+    .crt-vignette {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle, transparent 60%, black 150%);
+      pointer-events: none;
+      z-index: 101;
+    }
+
+    @keyframes scanline {
+      0% {
         bottom: 100%;
-        animation: scanline 8s linear infinite;
-        pointer-events: none;
       }
 
-      .matrix-rain-bg {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 0;
-        opacity: 0.15;
-        pointer-events: none;
+      100% {
+        bottom: 0%;
+      }
+    }
+
+    .scanline-bar {
+      width: 100%;
+      height: 100px;
+      z-index: 102;
+      background: linear-gradient(0deg, rgba(0, 255, 65, 0) 0%, rgba(0, 255, 65, 0.1) 50%, rgba(0, 255, 65, 0) 100%);
+      opacity: 0.1;
+      position: absolute;
+      bottom: 100%;
+      animation: scanline 8s linear infinite;
+      pointer-events: none;
+    }
+
+    .matrix-rain-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      opacity: 0.15;
+      pointer-events: none;
+    }
+
+    .glass-terminal {
+      background: rgba(2, 2, 2, 0.85);
+      backdrop-filter: blur(4px);
+      border: 1px solid var(--matrix-dark-green);
+    }
+
+    .matrix-border-glow {
+      box-shadow: 0 0 15px rgba(0, 255, 65, 0.15);
+    }
+
+    .matrix-text-glow {
+      text-shadow: 0 0 8px var(--matrix-green);
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--matrix-black);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--matrix-dark-green);
+      border: 1px solid var(--matrix-dim-green);
+    }
+
+    /* Scanning animation for projects */
+    @keyframes scan {
+      from {
+        transform: translateY(-100%);
       }
 
-      .glass-terminal {
-        background: rgba(2, 2, 2, 0.85);
-        backdrop-filter: blur(4px);
-        border: 1px solid var(--matrix-dark-green);
+      to {
+        transform: translateY(100%);
+      }
+    }
+
+    .scanner-line {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: var(--matrix-green);
+      box-shadow: 0 0 8px var(--matrix-green);
+      animation: scan 3s ease-in-out infinite;
+      z-index: 20;
+    }
+
+    /* Voice button waveform animation */
+    @keyframes waveform {
+
+      0%,
+      100% {
+        transform: scaleY(0.3);
       }
 
-      .matrix-border-glow {
-        box-shadow: 0 0 15px rgba(0, 255, 65, 0.15);
+      50% {
+        transform: scaleY(1);
+      }
+    }
+
+    /* Button scan effect */
+    .animate-scan {
+      animation: button-scan 2s linear infinite;
+    }
+
+    @keyframes button-scan {
+      0% {
+        transform: translateY(-100%);
       }
 
-      .matrix-text-glow {
-        text-shadow: 0 0 8px var(--matrix-green);
+      100% {
+        transform: translateY(400%);
+      }
+    }
+
+    /* Quantum Echo animations */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
       }
 
-      ::-webkit-scrollbar {
-        width: 6px;
+      to {
+        opacity: 1;
+        transform: scale(1);
       }
-      ::-webkit-scrollbar-track {
-        background: var(--matrix-black);
-      }
-      ::-webkit-scrollbar-thumb {
-        background: var(--matrix-dark-green);
-        border: 1px solid var(--matrix-dim-green);
-      }
+    }
 
-      /* Scanning animation for projects */
-      @keyframes scan {
-        from { transform: translateY(-100%); }
-        to { transform: translateY(100%); }
-      }
-      .scanner-line {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 2px;
-        background: var(--matrix-green);
-        box-shadow: 0 0 8px var(--matrix-green);
-        animation: scan 3s ease-in-out infinite;
-        z-index: 20;
-      }
+    .animate-fadeIn {
+      animation: fadeIn 0.3s ease-out forwards;
+    }
 
-      /* Voice button waveform animation */
-      @keyframes waveform {
-        0%, 100% { transform: scaleY(0.3); }
-        50% { transform: scaleY(1); }
-      }
+    /* Custom scrollbar styles */
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 4px;
+    }
 
-      /* Button scan effect */
-      .animate-scan {
-        animation: button-scan 2s linear infinite;
-      }
-      @keyframes button-scan {
-        0% { transform: translateY(-100%); }
-        100% { transform: translateY(400%); }
-      }
-    </style>
-    <script type="importmap">
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: #003B00;
+    }
+  </style>
+  <script type="importmap">
     {
       "imports": {
         "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
@@ -149,11 +203,13 @@
     </script>
   <link rel="stylesheet" href="/index.css">
 </head>
-  <body>
-    <div class="crt-overlay"></div>
-    <div class="crt-vignette"></div>
-    <div class="scanline-bar"></div>
-    <div id="root" class="relative z-10"></div>
+
+<body>
+  <div class="crt-overlay"></div>
+  <div class="crt-vignette"></div>
+  <div class="scanline-bar"></div>
+  <div id="root" class="relative z-10"></div>
   <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>
