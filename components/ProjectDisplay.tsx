@@ -98,10 +98,22 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({ project, onClose }) => 
             DOWNLOAD_SRC
           </a>
         )}
-        <button className="flex-1 py-3 bg-[#00FF41] text-[#0d0208] text-xs font-bold hover:bg-white hover:shadow-[0_0_20px_#00FF41] transition-all group relative overflow-hidden">
-          <span className="relative z-10">INITIALIZE_DEMO</span>
-          <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-500"></div>
-        </button>
+        {project.demoUrl ? (
+          <a 
+            href={project.demoUrl} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex-1 text-center py-3 bg-[#00FF41] text-[#0d0208] text-xs font-bold hover:bg-white hover:shadow-[0_0_20px_#00FF41] transition-all group relative overflow-hidden"
+          >
+            <span className="relative z-10">INITIALIZE_DEMO</span>
+            <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-500"></div>
+          </a>
+        ) : (
+          <button className="flex-1 py-3 bg-[#00FF41] text-[#0d0208] text-xs font-bold hover:bg-white hover:shadow-[0_0_20px_#00FF41] transition-all group relative overflow-hidden">
+            <span className="relative z-10">INITIALIZE_DEMO</span>
+            <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-500"></div>
+          </button>
+        )}
       </div>
     </div>
   );

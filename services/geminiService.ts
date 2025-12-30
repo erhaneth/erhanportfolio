@@ -12,7 +12,7 @@ const showProjectTool: FunctionDeclaration = {
     properties: {
       projectId: {
         type: Type.STRING,
-        description: 'The ID of the project to display. Options: cv-vision-pro, agentic-support, secret-project-omega',
+        description: 'The ID of the project to display. Options: tip-kurdish-keyboard, locked-in, secret-project-omega',
       },
     },
     required: ['projectId'],

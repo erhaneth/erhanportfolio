@@ -3,52 +3,52 @@
  * This will be available at: /.netlify/functions/send-resume
  */
 
-import type { Handler } from '@netlify/functions';
-import { Resend } from 'resend';
+import type { Handler } from "@netlify/functions";
+import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const handler: Handler = async (event, context) => {
   // Only allow POST requests
-  if (event.httpMethod !== 'POST') {
+  if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
-      body: JSON.stringify({ error: 'Method not allowed' }),
+      body: JSON.stringify({ error: "Method not allowed" }),
     };
   }
 
   try {
-    const { email, name } = JSON.parse(event.body || '{}');
+    const { email, name } = JSON.parse(event.body || "{}");
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: 'Invalid email address' }),
+        body: JSON.stringify({ error: "Invalid email address" }),
       };
     }
 
     // Use provided name or default to "there"
-    const recipientName = name?.trim() || 'there';
+    const recipientName = name?.trim() || "there";
 
     // Get resume from public folder
     // In production, use your actual domain
-    const resumeUrl = process.env.URL 
+    const resumeUrl = process.env.URL
       ? `${process.env.URL}/resume/Gumus_Huseyin_22_12_Resume.docx.pdf`
       : process.env.DEPLOY_PRIME_URL
       ? `${process.env.DEPLOY_PRIME_URL}/resume/Gumus_Huseyin_22_12_Resume.docx.pdf`
-      : 'http://localhost:8888/resume/Gumus_Huseyin_22_12_Resume.docx.pdf';
+      : "http://localhost:8888/resume/Gumus_Huseyin_22_12_Resume.docx.pdf";
 
     const resumeResponse = await fetch(resumeUrl);
     if (!resumeResponse.ok) {
-      throw new Error('Failed to fetch resume file');
+      throw new Error("Failed to fetch resume file");
     }
     const resumeBuffer = await resumeResponse.arrayBuffer();
 
     // Send email with resume attachment
     const { data, error } = await resend.emails.send({
-      from: 'Erhan Gumus <onboarding@resend.dev>', // Change this to your verified domain email
+      from: "Erhan Gumus <onboarding@resend.dev>", // Change this to your verified domain email
       to: email,
-      subject: 'Erhan Gumus - Resume',
+      subject: "Erhan Gumus - Resume",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #00FF41;">Hello ${recipientName}!</h2>
@@ -64,18 +64,18 @@ export const handler: Handler = async (event, context) => {
       `,
       attachments: [
         {
-          filename: 'Erhan_Gumus_Resume.pdf',
+          filename: "Erhan_Gumus_Resume.pdf",
           content: Buffer.from(resumeBuffer),
         },
       ],
     });
 
     if (error) {
-      console.error('Resend error:', error);
+      console.error("Resend error:", error);
       return {
         statusCode: 500,
         body: JSON.stringify({
-          error: 'Failed to send email. Please try again later.',
+          error: "Failed to send email. Please try again later.",
         }),
       };
     }
@@ -84,18 +84,18 @@ export const handler: Handler = async (event, context) => {
       statusCode: 200,
       body: JSON.stringify({
         success: true,
-        message: 'Resume sent successfully!',
+        message: "Resume sent successfully!",
         emailId: data?.id,
       }),
     };
   } catch (error: any) {
-    console.error('Error sending resume:', error);
+    console.error("Error sending resume:", error);
     return {
       statusCode: 500,
       body: JSON.stringify({
-        error: error.message || 'Failed to send resume. Please try again later.',
+        error:
+          error.message || "Failed to send resume. Please try again later.",
       }),
     };
   }
 };
-
