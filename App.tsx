@@ -6,16 +6,25 @@ import ProjectDisplay from "./components/ProjectDisplay";
 import MatrixRain from "./components/MatrixRain";
 import VoiceButton from "./components/VoiceButton";
 import EmailModal from "./components/EmailModal";
+import LanguageActivation from "./components/LanguageActivation";
 import ContextPills, {
   generateContextFromPills,
 } from "./components/ContextPills";
 import { useMessages } from "./hooks/useMessages";
 import { useVoiceChat } from "./hooks/useVoiceChat";
 import { sendResume } from "./services/emailService";
+import { useLanguage } from "./contexts/LanguageContext";
 
 type UserMode = "hiring" | "visiting" | null;
 
 const App: React.FC = () => {
+  const {
+    language,
+    detectAndSetLanguage,
+    translate,
+    showActivation,
+    setShowActivation,
+  } = useLanguage();
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [showContextPanel, setShowContextPanel] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -57,17 +66,25 @@ const App: React.FC = () => {
       try {
         const result = await sendResume(email, name);
         if (result.success) {
-          addSystemMessage(
-            `[RESUME_SENT]: Resume delivered to ${email}. Check your inbox.`
-          );
+          addSystemMessage(translate("system.resumeSent", { email }));
           setShowEmailModal(false);
         } else {
           addSystemMessage(
-            `[ERROR]: ${result.error || "Failed to send resume."}`
+            translate("system.error", {
+              message:
+                result.error ||
+                translate("system.error", {
+                  message: "Failed to send resume.",
+                }),
+            })
           );
         }
       } catch (error) {
-        addSystemMessage(`[ERROR]: Failed to send resume. Please try again.`);
+        addSystemMessage(
+          translate("system.error", {
+            message: "Failed to send resume. Please try again.",
+          })
+        );
       } finally {
         setIsSendingResume(false);
       }
@@ -82,9 +99,12 @@ const App: React.FC = () => {
       onProjectShow: setActiveProject,
       onInputTranscript: useCallback(
         (text: string) => {
+          console.log("[App] onInputTranscript called with text:", text);
+          console.log("[App] Calling detectAndSetLanguage for voice input...");
+          detectAndSetLanguage(text);
           updateTransientMessage("user", text);
         },
-        [updateTransientMessage]
+        [updateTransientMessage, detectAndSetLanguage]
       ),
       onOutputTranscript: useCallback(
         (text: string) => {
@@ -100,9 +120,12 @@ const App: React.FC = () => {
   // Handle text message submission
   const onSendMessage = useCallback(
     async (text: string) => {
+      console.log("[App] onSendMessage called with text:", text);
+      console.log("[App] Calling detectAndSetLanguage...");
+      detectAndSetLanguage(text);
       await handleSendMessage(text);
     },
-    [handleSendMessage]
+    [handleSendMessage, detectAndSetLanguage]
   );
 
   // Check if any context is set
@@ -110,11 +133,11 @@ const App: React.FC = () => {
 
   // Get context label for button
   const getContextLabel = () => {
-    if (showContextPanel) return "× HIDE";
-    if (!hasContext) return "+ WHO ARE YOU?";
-    if (userMode === "hiring") return "RECRUITER MODE";
-    if (userMode === "visiting") return "VISITOR MODE";
-    return "CONTEXT SET";
+    if (showContextPanel) return translate("context.hide");
+    if (!hasContext) return translate("context.whoAreYou");
+    if (userMode === "hiring") return translate("context.recruiterMode");
+    if (userMode === "visiting") return translate("context.visitorMode");
+    return translate("context.set");
   };
 
   return (
@@ -234,7 +257,9 @@ const App: React.FC = () => {
               <div className="mt-3 pt-3 border-t border-[#003B00] animate-in fade-in duration-300">
                 <div className="text-[10px] sm:text-[11px] text-[#008F11] uppercase tracking-widest mb-2 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 bg-[#008F11]" />
-                  {userMode === "hiring" ? "JOB_DETAILS" : "ANYTHING_ELSE"}
+                  {userMode === "hiring"
+                    ? translate("context.jobDetails")
+                    : translate("context.anythingElse")}
                 </div>
                 <textarea
                   value={customContext}
@@ -260,7 +285,7 @@ const App: React.FC = () => {
                 }}
                 className="w-full mt-3 py-2 text-[11px] sm:text-xs text-[#008F11] border border-[#003B00] hover:border-red-500/50 hover:text-red-400 transition-all uppercase tracking-wider font-medium"
               >
-                RESET_CONTEXT
+                {translate("context.resetContext")}
               </button>
             )}
           </div>
@@ -269,7 +294,7 @@ const App: React.FC = () => {
         {/* Network Activity */}
         <div className="glass-terminal border border-[#003B00] p-4 flex-1 min-h-[120px] overflow-hidden flex flex-col">
           <p className="text-[10px] text-[#008F11] uppercase font-bold mb-2 flex-shrink-0">
-            Network_Activity
+            {translate("context.networkActivity")}
           </p>
           <div className="flex-1 text-[9px] text-[#003B00] mono overflow-y-auto">
             {Array.from({ length: 12 }).map((_, i) => (
@@ -312,6 +337,13 @@ const App: React.FC = () => {
         onClose={() => setShowEmailModal(false)}
         onConfirm={handleSendResume}
         isLoading={isSendingResume}
+      />
+
+      {/* Language Activation Notification */}
+      <LanguageActivation
+        isActive={showActivation}
+        language={language}
+        onClose={() => setShowActivation(false)}
       />
     </div>
   );

@@ -1,13 +1,22 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Message, Project } from "../types";
 import { PORTFOLIO_DATA, RIDDLE_DATA } from "../constants";
 import { generateResponse } from "../services/geminiService";
+import { useLanguage } from "../contexts/LanguageContext";
+import { t } from "../utils/translations";
 
-const WELCOME_MESSAGE: Message = {
-  id: "welcome",
-  role: "assistant",
-  content: `[IDENTITY VERIFIED: ERHAN GUMUS]\n[SYSTEM_LOG]: Mainframe accessed successfully.\nGreetings. I am the neural bridge to Erhan's work. What information are you authorized to view?`,
-  timestamp: Date.now(),
+const createWelcomeMessage = (lang: "en" | "tr"): Message => {
+  const content =
+    lang === "tr"
+      ? `[KİMLİK DOĞRULANDI: ERHAN GÜMÜŞ]\n[SİSTEM_KAYDI]: Ana sistem başarıyla erişildi.\nSelamlar. Ben Erhan'ın çalışmalarına giden sinir köprüsüyüm. Hangi bilgilere ulasmak icin yetki istersiniz?`
+      : `[IDENTITY VERIFIED: ERHAN GUMUS]\n[SYSTEM_LOG]: Mainframe accessed successfully.\nGreetings. I am the neural bridge to Erhan's work. What information would you like to be authorized to view?`;
+
+  return {
+    id: "welcome",
+    role: "assistant",
+    content,
+    timestamp: Date.now(),
+  };
 };
 
 interface UseMessagesReturn {
@@ -30,9 +39,25 @@ export const useMessages = (
   onProjectShow?: (project: Project) => void,
   onResumeRequest?: () => void
 ): UseMessagesReturn => {
-  const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
+  const { language } = useLanguage();
+  const [messages, setMessages] = useState<Message[]>([
+    createWelcomeMessage(language),
+  ]);
   const [isLoading, setIsLoading] = useState(false);
   const [riddleActive, setRiddleActive] = useState(false);
+
+  // Update welcome message when language changes
+  useEffect(() => {
+    setMessages((prev) => {
+      const welcomeIndex = prev.findIndex((m) => m.id === "welcome");
+      if (welcomeIndex !== -1) {
+        const newMessages = [...prev];
+        newMessages[welcomeIndex] = createWelcomeMessage(language);
+        return newMessages;
+      }
+      return prev;
+    });
+  }, [language]);
 
   const addMessage = useCallback((message: Message) => {
     setMessages((prev) => [...prev, message]);
@@ -79,7 +104,10 @@ export const useMessages = (
     setMessages((prev) =>
       prev.map((m) =>
         m.metadata?.transient
-          ? { ...m, metadata: { ...m.metadata, transient: false, fromVoice: true } }
+          ? {
+              ...m,
+              metadata: { ...m.metadata, transient: false, fromVoice: true },
+            }
           : m
       )
     );
@@ -133,7 +161,8 @@ export const useMessages = (
           userContext
         );
 
-        const responseText = response.text || "SIGNAL INTERRUPTED. RETRYING...";
+        const responseText =
+          response.text || t("chat.signalInterrupted", language);
         const assistantMsg: Message = {
           id: `${Date.now() + 1}`,
           role: "assistant",
