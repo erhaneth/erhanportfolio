@@ -8,12 +8,14 @@ import VoiceButton from "./components/VoiceButton";
 import EmailModal from "./components/EmailModal";
 import LanguageActivation from "./components/LanguageActivation";
 import MissionBriefing from "./components/MissionBriefing";
+import OperatorStatus from "./components/OperatorStatus";
 import ContextPills, {
   generateContextFromPills,
 } from "./components/ContextPills";
 import { useMessages } from "./hooks/useMessages";
 import { useVoiceChat } from "./hooks/useVoiceChat";
 import { sendResume } from "./services/emailService";
+import { sendMessageToSlack, getSessionId } from "./services/slackService";
 import { useLanguage } from "./contexts/LanguageContext";
 
 type UserMode = "hiring" | "visiting" | null;
@@ -32,6 +34,7 @@ const App: React.FC = () => {
   const [isSendingResume, setIsSendingResume] = useState(false);
   const [showMissionBriefing, setShowMissionBriefing] = useState(false);
   const [missionJobDescription, setMissionJobDescription] = useState("");
+  const [isOperatorMode, setIsOperatorMode] = useState(false);
 
   // Context pill selections
   const [userMode, setUserMode] = useState<UserMode>(null);
@@ -126,9 +129,20 @@ const App: React.FC = () => {
       console.log("[App] onSendMessage called with text:", text);
       console.log("[App] Calling detectAndSetLanguage...");
       detectAndSetLanguage(text);
+      
+      // Forward to Slack if operator mode is active
+      if (isOperatorMode) {
+        sendMessageToSlack({
+          sessionId: getSessionId(),
+          message: text,
+          messageType: "visitor",
+          timestamp: new Date(),
+        });
+      }
+      
       await handleSendMessage(text);
     },
-    [handleSendMessage, detectAndSetLanguage]
+    [handleSendMessage, detectAndSetLanguage, isOperatorMode]
   );
 
   // Check if any context is set
@@ -209,6 +223,26 @@ const App: React.FC = () => {
                 </a>
               </div>
             </div>
+          </div>
+
+          {/* Operator Direct Channel */}
+          <div className="border-b border-[#003B00] pb-4">
+            <OperatorStatus 
+              conversationHistory={messages.map(m => ({ role: m.role, content: m.content }))}
+              userContext={userContext}
+              onOperatorModeChange={(active) => {
+                setIsOperatorMode(active);
+                if (active) {
+                  addSystemMessage("🔗 UPLINK ESTABLISHED — Erhan has been notified and is monitoring this conversation.");
+                } else {
+                  addSystemMessage("📡 UPLINK TERMINATED — Returning to AI mode.");
+                }
+              }}
+              onOperatorMessage={(message) => {
+                // Display operator's message in the chat
+                addSystemMessage(`👤 OPERATOR ERHAN: ${message}`);
+              }}
+            />
           </div>
 
           <div className="space-y-4 pt-2">
