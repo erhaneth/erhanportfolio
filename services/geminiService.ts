@@ -1,62 +1,77 @@
-
-import { GoogleGenAI, Type, FunctionDeclaration, GenerateContentResponse, Modality } from "@google/genai";
+import {
+  GoogleGenAI,
+  Type,
+  FunctionDeclaration,
+  GenerateContentResponse,
+  Modality,
+} from "@google/genai";
 import { INITIAL_SYSTEM_PROMPT, PORTFOLIO_DATA } from "../constants";
 
 const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const showProjectTool: FunctionDeclaration = {
-  name: 'showProject',
+  name: "showProject",
   parameters: {
     type: Type.OBJECT,
-    description: 'Displays a specific project from the portfolio based on ID.',
+    description: "Displays a specific project from the portfolio based on ID.",
     properties: {
       projectId: {
         type: Type.STRING,
-        description: 'The ID of the project to display. Options: tip-kurdish-keyboard, locked-in, secret-project-omega',
+        description:
+          "The ID of the project to display. Options: tip-kurdish-keyboard, locked-in, secret-project-omega",
       },
     },
-    required: ['projectId'],
+    required: ["projectId"],
   },
 };
 
 const unlockSecretProjectTool: FunctionDeclaration = {
-  name: 'presentRiddle',
+  name: "presentRiddle",
   parameters: {
     type: Type.OBJECT,
-    description: 'Presents a riddle to the user to unlock secret projects.',
+    description: "Presents a riddle to the user to unlock secret projects.",
     properties: {},
   },
 };
 
 const requestResumeEmailTool: FunctionDeclaration = {
-  name: 'requestResumeEmail',
+  name: "requestResumeEmail",
   parameters: {
     type: Type.OBJECT,
-    description: 'Requests the user\'s email address to send Erhan\'s resume. Use this when a recruiter asks for a resume, CV, or wants to receive Erhan\'s information via email.',
+    description:
+      "Requests the user's email address to send Erhan's resume. Use this when a recruiter asks for a resume, CV, or wants to receive Erhan's information via email.",
     properties: {},
   },
 };
 
 export const generateResponse = async (
-  messages: { role: 'user' | 'assistant'; content: string }[],
+  messages: { role: "user" | "assistant"; content: string }[],
   userContext?: string
 ) => {
   const ai = getAI();
-  const systemInstruction = userContext 
+  const systemInstruction = userContext
     ? `${INITIAL_SYSTEM_PROMPT}\n\nUSER CONTEXT (Recruiter info/Job Desc):\n${userContext}`
     : INITIAL_SYSTEM_PROMPT;
 
-  const contents = messages.map(m => ({
-    role: m.role === 'user' ? 'user' : 'model',
-    parts: [{ text: m.content }]
+  const contents = messages.map((m) => ({
+    role: m.role === "user" ? "user" : "model",
+    parts: [{ text: m.content }],
   }));
 
   const response: GenerateContentResponse = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: "gemini-3-flash-preview",
     contents: contents as any,
     config: {
       systemInstruction,
-      tools: [{ functionDeclarations: [showProjectTool, unlockSecretProjectTool, requestResumeEmailTool] }],
+      tools: [
+        {
+          functionDeclarations: [
+            showProjectTool,
+            unlockSecretProjectTool,
+            requestResumeEmailTool,
+          ],
+        },
+      ],
     },
   });
 
@@ -66,7 +81,7 @@ export const generateResponse = async (
 // --- Live API Helpers ---
 
 export function encode(bytes: Uint8Array) {
-  let binary = '';
+  let binary = "";
   const len = bytes.byteLength;
   for (let i = 0; i < len; i++) {
     binary += String.fromCharCode(bytes[i]);
@@ -88,7 +103,7 @@ export async function decodeAudioData(
   data: Uint8Array,
   ctx: AudioContext,
   sampleRate: number,
-  numChannels: number,
+  numChannels: number
 ): Promise<AudioBuffer> {
   const dataInt16 = new Int16Array(data.buffer);
   const frameCount = dataInt16.length / numChannels;
@@ -103,19 +118,22 @@ export async function decodeAudioData(
   return buffer;
 }
 
-export const connectLive = async (callbacks: {
-  onMessage: (message: any) => void;
-  onOpen: () => void;
-  onClose: () => void;
-  onError: (e: any) => void;
-}, userContext?: string) => {
+export const connectLive = async (
+  callbacks: {
+    onMessage: (message: any) => void;
+    onOpen: () => void;
+    onClose: () => void;
+    onError: (e: any) => void;
+  },
+  userContext?: string
+) => {
   const ai = getAI();
-  const systemInstruction = userContext 
+  const systemInstruction = userContext
     ? `${INITIAL_SYSTEM_PROMPT}\n\nUSER CONTEXT (Recruiter info/Job Desc):\n${userContext}`
     : INITIAL_SYSTEM_PROMPT;
 
   return ai.live.connect({
-    model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+    model: "gemini-2.5-flash-native-audio-preview-09-2025",
     callbacks: {
       onopen: callbacks.onOpen,
       onmessage: callbacks.onMessage,
@@ -128,10 +146,18 @@ export const connectLive = async (callbacks: {
       outputAudioTranscription: {},
       inputAudioTranscription: {},
       speechConfig: {
-        voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } },
+        voiceConfig: { prebuiltVoiceConfig: { voiceName: "Puck" } },
       },
-      tools: [{ functionDeclarations: [showProjectTool, unlockSecretProjectTool, requestResumeEmailTool] }],
-    }
+      tools: [
+        {
+          functionDeclarations: [
+            showProjectTool,
+            unlockSecretProjectTool,
+            requestResumeEmailTool,
+          ],
+        },
+      ],
+    },
   });
 };
 
@@ -143,7 +169,7 @@ export function createPcmBlob(data: Float32Array): any {
   }
   return {
     data: encode(new Uint8Array(int16.buffer)),
-    mimeType: 'audio/pcm;rate=16000',
+    mimeType: "audio/pcm;rate=16000",
   };
 }
 
@@ -157,25 +183,27 @@ export const generateSpeech = async (text: string): Promise<string> => {
       responseModalities: [Modality.AUDIO],
       speechConfig: {
         voiceConfig: {
-          prebuiltVoiceConfig: { voiceName: 'Kore' },
+          prebuiltVoiceConfig: { voiceName: "Kore" },
         },
       },
     },
   });
 
-  const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-  return base64Audio ? `data:audio/pcm;base64,${base64Audio}` : '';
+  const base64Audio =
+    response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+  return base64Audio ? `data:audio/pcm;base64,${base64Audio}` : "";
 };
 
 export async function playPcm(base64: string) {
-  const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-  const binaryString = atob(base64.split(',')[1] || base64);
+  const audioContext = new (window.AudioContext ||
+    (window as any).webkitAudioContext)({ sampleRate: 24000 });
+  const binaryString = atob(base64.split(",")[1] || base64);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
   for (let i = 0; i < len; i++) {
     bytes[i] = binaryString.charCodeAt(i);
   }
-  
+
   const dataInt16 = new Int16Array(bytes.buffer);
   const buffer = audioContext.createBuffer(1, dataInt16.length, 24000);
   const channelData = buffer.getChannelData(0);

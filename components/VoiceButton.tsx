@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface VoiceButtonProps {
   isActive: boolean;
@@ -15,6 +16,7 @@ const VoiceButton: React.FC<VoiceButtonProps> = ({
   aiVolume = 0,
   isAiTalking = false 
 }) => {
+  const { translate } = useLanguage();
   const [bars, setBars] = useState([4, 8, 12, 8, 4]);
 
   // Determine current state
@@ -108,10 +110,10 @@ const VoiceButton: React.FC<VoiceButtonProps> = ({
 
   // Get label based on state
   const getLabel = () => {
-    if (!isActive) return 'SPEAK';
-    if (isAiSpeaking) return 'AI SPEAKING';
-    if (isUserSpeaking) return 'LISTENING...';
-    return 'READY';
+    if (!isActive) return translate('voice.speak');
+    if (isAiSpeaking) return translate('voice.processing');
+    if (isUserSpeaking) return translate('voice.listening');
+    return translate('voice.speak');
   };
 
   return (

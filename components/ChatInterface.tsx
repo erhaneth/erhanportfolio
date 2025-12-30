@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { Message } from "../types";
 import TypewriterText from "./TypewriterText";
+import { useLanguage } from "../contexts/LanguageContext";
 
 interface ChatInterfaceProps {
   messages: Message[];
@@ -13,6 +14,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   isLoading,
   onSendMessage,
 }) => {
+  const { translate } = useLanguage();
   const [input, setInput] = React.useState("");
   const [completedMessages, setCompletedMessages] = useState<Set<string>>(
     new Set()
@@ -76,8 +78,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </span>
         </div>
         <div className="text-[9px] text-[#008F11] mono hidden sm:block">
-          STATUS:{" "}
-          <span className="text-[#00FF41] animate-pulse">ENCRYPTED</span>
+          {translate("chat.status")}:{" "}
+          <span className="text-[#00FF41] animate-pulse">
+            {translate("chat.encrypted")}
+          </span>
         </div>
       </div>
 
@@ -96,13 +100,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             >
               {msg.role === "user" ? (
                 <>
-                  <span>[REMOTE_USER]</span>
+                  <span>{translate("chat.remoteUser")}</span>
                   <div className="w-1.5 h-1.5 bg-[#008F11]" />
                 </>
               ) : (
                 <>
                   <div className="w-1.5 h-1.5 bg-[#00FF41] shadow-[0_0_5px_#00FF41]" />
-                  <span>[SYSTEM_ARCHIVE]</span>
+                  <span>{translate("chat.systemArchive")}</span>
                 </>
               )}
             </div>
@@ -155,7 +159,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={isLoading}
-            placeholder="Type command here..."
+            placeholder={translate("chat.placeholder")}
             className="flex-1 bg-transparent border-none py-2 text-sm text-[#00FF41] focus:outline-none placeholder:text-[#003B00] mono caret-[#00FF41]"
           />
           <button
