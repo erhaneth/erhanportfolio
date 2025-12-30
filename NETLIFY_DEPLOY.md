@@ -19,9 +19,9 @@
    - **Publish directory**: `dist`
    - ✅ These are already configured in `netlify.toml`
 
-### 2. Set Environment Variables
+### 2. Set Environment Variables ⚠️ CRITICAL
 
-Before deploying, add these environment variables in Netlify:
+**You MUST set these BEFORE deploying, or trigger a redeploy after setting them!**
 
 1. In your site settings, go to **"Environment variables"**
 2. Click **"Add variable"** and add:
@@ -31,7 +31,10 @@ Before deploying, add these environment variables in Netlify:
    RESEND_API_KEY = your_resend_api_key_here
    ```
 
-   ⚠️ **Important**: Get your `GEMINI_API_KEY` from [Google AI Studio](https://aistudio.google.com/apikey)
+   ⚠️ **Important**: 
+   - Get your `GEMINI_API_KEY` from [Google AI Studio](https://aistudio.google.com/apikey)
+   - **After adding env vars, you MUST redeploy** (go to Deploys → Trigger deploy → Deploy site)
+   - Environment variables are injected at BUILD TIME, so existing deploys won't have them
 
 ### 3. Deploy!
 
@@ -65,8 +68,13 @@ After deployment, test:
 - **Fix**: Make sure `package.json` has all dependencies
 - Run `npm install` locally to verify
 
-**Error**: `Environment variable not found`
-- **Fix**: Check that `GEMINI_API_KEY` and `RESEND_API_KEY` are set in Netlify
+**Error**: `Environment variable not found` or `[INTERNAL_ERROR_0x99]: System instability. Connection lost.`
+- **Fix**: 
+  1. Check that `GEMINI_API_KEY` is set in Netlify environment variables
+  2. **CRITICAL**: After adding env vars, you MUST trigger a new deploy
+  3. Go to **Deploys** → **Trigger deploy** → **Deploy site**
+  4. Wait for the new build to complete
+  5. The error happens because the API key wasn't available during the build
 
 ### Resume Email Not Sending
 
