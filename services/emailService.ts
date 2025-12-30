@@ -12,7 +12,8 @@ export interface SendResumeResponse {
 export const sendResume = async (email: string, name: string): Promise<SendResumeResponse> => {
   try {
     // Call your backend API endpoint
-    // Vite proxy will forward /api/* to Vercel dev server in development
+    // In production: Netlify redirects /api/* to /.netlify/functions/*
+    // In development: Vite proxy forwards /api/* to local server (see vite.config.ts)
     const response = await fetch('/api/send-resume', {
       method: 'POST',
       headers: {

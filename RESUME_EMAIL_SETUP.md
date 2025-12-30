@@ -31,19 +31,13 @@ public/resume/Gumus_Huseyin_22_12_Resume.docx.pdf
 - SendGrid (free tier: 100 emails/day)
 - Nodemailer (works with Gmail, SMTP)
 
-### 3. Create Backend API Endpoint
+### 3. Backend API Endpoint ✅
 
-**For Vercel:**
+**For Netlify (Current Setup):**
 
-1. Create `api/send-resume.ts`
-2. Copy code from `api/send-resume.example.ts`
-3. Uncomment Resend code
-4. Add `RESEND_API_KEY` to Vercel environment variables
-
-**For Netlify:**
-
-1. Create `netlify/functions/send-resume.ts`
-2. Similar setup, different import structure
+1. ✅ `netlify/functions/send-resume.ts` already exists
+2. ✅ `netlify.toml` configured with redirects
+3. Add `RESEND_API_KEY` to Netlify environment variables (see NETLIFY_DEPLOY.md)
 
 **For Custom Backend:**
 
@@ -58,13 +52,12 @@ Add to `.env.local`:
 RESEND_API_KEY=re_xxxxxxxxxxxxx
 ```
 
-### 5. Update Email Service URL
+### 5. Email Service URL ✅
 
-In `services/emailService.ts`, update the fetch URL:
+In `services/emailService.ts`, the fetch URL is already configured:
 
-- Vercel: `/api/send-resume`
-- Netlify: `/.netlify/functions/send-resume`
-- Custom: `https://your-api.com/send-resume`
+- ✅ Netlify: `/api/send-resume` (automatically redirects to `/.netlify/functions/send-resume` via `netlify.toml`)
+- Custom backend: Update to `https://your-api.com/send-resume`
 
 ## Testing
 
@@ -76,7 +69,7 @@ In `services/emailService.ts`, update the fetch URL:
 
 ## Customization
 
-- **Email content**: Edit the HTML in `api/send-resume.example.ts`
+- **Email content**: Edit the HTML in `netlify/functions/send-resume.ts`
 - **Resume filename**: Change in attachment settings
 - **From address**: Update in email service config
 
