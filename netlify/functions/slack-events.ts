@@ -1,37 +1,7 @@
 import { Handler } from "@netlify/functions";
-import { initializeApp, getApps, cert } from "firebase-admin/app";
-import { getDatabase } from "firebase-admin/database";
 
-// Lazy init Firebase
-let database: ReturnType<typeof getDatabase> | null = null;
-
-function getDb() {
-  if (!database) {
-    try {
-      if (getApps().length === 0) {
-        const privateKey = process.env.FIREBASE_PRIVATE_KEY;
-        // Handle different ways the key might be stored
-        const formattedKey = privateKey?.includes("\\n") 
-          ? privateKey.replace(/\\n/g, "\n")
-          : privateKey;
-          
-        initializeApp({
-          credential: cert({
-            projectId: "portfolio-chat-aab82",
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: formattedKey,
-          }),
-          databaseURL: "https://portfolio-chat-aab82-default-rtdb.firebaseio.com",
-        });
-      }
-      database = getDatabase();
-    } catch (error) {
-      console.error("Firebase init error:", error);
-      throw error;
-    }
-  }
-  return database;
-}
+// Use Firebase REST API instead of Admin SDK to avoid bundling issues
+const FIREBASE_DB_URL = "https://portfolio-chat-aab82-default-rtdb.firebaseio.com";
 
 export const handler: Handler = async (event) => {
   console.log("Slack events received");
@@ -49,6 +19,7 @@ export const handler: Handler = async (event) => {
   
   // URL Verification challenge - respond immediately
   if (body.type === "url_verification") {
+    console.log("Responding to challenge");
     return {
       statusCode: 200,
       headers: { "Content-Type": "text/plain" },
@@ -70,16 +41,28 @@ export const handler: Handler = async (event) => {
         const message = sessionMatch[2].trim();
         
         if (message) {
-          console.log(`Storing message for session ${sessionId}`);
-          const db = getDb();
-          const messagesRef = db.ref(`messages/${sessionId}`);
-          await messagesRef.push({
-            sessionId,
-            role: "operator",
-            content: message,
-            timestamp: Date.now(),
-          });
-          console.log(`Stored operator message for session ${sessionId}: ${message}`);
+          console.log(`Storing message for session ${sessionId}: ${message}`);
+          
+          // Use Firebase REST API (no auth needed since rules allow public write)
+          const response = await fetch(
+            `${FIREBASE_DB_URL}/messages/${sessionId}.json`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                sessionId,
+                role: "operator",
+                content: message,
+                timestamp: Date.now(),
+              }),
+            }
+          );
+          
+          if (response.ok) {
+            console.log("Message stored successfully");
+          } else {
+            console.error("Firebase error:", await response.text());
+          }
         }
       }
     }
@@ -87,7 +70,6 @@ export const handler: Handler = async (event) => {
     return { statusCode: 200, body: "ok" };
   } catch (error) {
     console.error("Error:", error);
-    // Always return 200 to Slack to prevent retries
     return { statusCode: 200, body: "ok" };
   }
 };
