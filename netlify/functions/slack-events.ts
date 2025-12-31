@@ -7,40 +7,56 @@ let database: ReturnType<typeof getDatabase> | null = null;
 
 function getDb() {
   if (!database) {
-    if (getApps().length === 0) {
-      initializeApp({
-        credential: cert({
-          projectId: "portfolio-chat-aab82",
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-        }),
-        databaseURL: "https://portfolio-chat-aab82-default-rtdb.firebaseio.com",
-      });
+    try {
+      if (getApps().length === 0) {
+        const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+        // Handle different ways the key might be stored
+        const formattedKey = privateKey?.includes("\\n") 
+          ? privateKey.replace(/\\n/g, "\n")
+          : privateKey;
+          
+        initializeApp({
+          credential: cert({
+            projectId: "portfolio-chat-aab82",
+            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+            privateKey: formattedKey,
+          }),
+          databaseURL: "https://portfolio-chat-aab82-default-rtdb.firebaseio.com",
+        });
+      }
+      database = getDatabase();
+    } catch (error) {
+      console.error("Firebase init error:", error);
+      throw error;
     }
-    database = getDatabase();
   }
   return database;
 }
 
 export const handler: Handler = async (event) => {
-  console.log("Slack events received:", event.body);
+  console.log("Slack events received");
   
   if (!event.body) {
     return { statusCode: 400, body: "No body" };
   }
 
+  let body;
   try {
-    const body = JSON.parse(event.body);
-    
-    // URL Verification challenge
-    if (body.type === "url_verification") {
-      return {
-        statusCode: 200,
-        headers: { "Content-Type": "text/plain" },
-        body: body.challenge,
-      };
-    }
+    body = JSON.parse(event.body);
+  } catch {
+    return { statusCode: 400, body: "Invalid JSON" };
+  }
+  
+  // URL Verification challenge - respond immediately
+  if (body.type === "url_verification") {
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "text/plain" },
+      body: body.challenge,
+    };
+  }
 
+  try {
     // Handle message events from operator
     if (body.event?.type === "message" && !body.event?.bot_id && !body.event?.subtype) {
       const { text } = body.event;
@@ -54,6 +70,7 @@ export const handler: Handler = async (event) => {
         const message = sessionMatch[2].trim();
         
         if (message) {
+          console.log(`Storing message for session ${sessionId}`);
           const db = getDb();
           const messagesRef = db.ref(`messages/${sessionId}`);
           await messagesRef.push({
@@ -70,6 +87,7 @@ export const handler: Handler = async (event) => {
     return { statusCode: 200, body: "ok" };
   } catch (error) {
     console.error("Error:", error);
-    return { statusCode: 200, body: "ok" }; // Always return 200 to Slack
+    // Always return 200 to Slack to prevent retries
+    return { statusCode: 200, body: "ok" };
   }
 };
