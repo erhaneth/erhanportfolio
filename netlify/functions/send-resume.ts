@@ -2,6 +2,7 @@
  * Netlify Serverless Function for sending resume
  * This will be available at: /.netlify/functions/send-resume
  */
+import { serverLogger } from "../../utils/logger";
 
 import type { Handler } from "@netlify/functions";
 import { Resend } from "resend";
@@ -71,7 +72,7 @@ export const handler: Handler = async (event, context) => {
     });
 
     if (error) {
-      console.error("Resend error:", error);
+      serverLogger.error("Resend error:", error);
       return {
         statusCode: 500,
         body: JSON.stringify({

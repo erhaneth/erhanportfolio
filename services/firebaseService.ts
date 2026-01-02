@@ -84,6 +84,7 @@ export const storeMessage = async (
     
     return newMessageRef.key;
   } catch (error) {
+    // Firebase errors are critical - keep for production debugging
     console.error("Failed to store message:", error);
     return null;
   }

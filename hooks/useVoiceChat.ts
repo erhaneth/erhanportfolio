@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Project } from '../types';
 import { PORTFOLIO_DATA } from '../constants';
 import { connectLive, decode, decodeAudioData } from '../services/geminiService';
+import { logger } from '../utils/logger';
 
 // Base64 encode helper
 function encode(bytes: Uint8Array): string {
@@ -115,16 +116,16 @@ export const useVoiceChat = (options: UseVoiceChatOptions): UseVoiceChatReturn =
   }, []);
 
   const startVoiceChat = useCallback(async () => {
-    console.log('startVoiceChat called');
+    logger.debug('startVoiceChat called');
     
     // Defer heavy initialization to next event loop to avoid blocking typewriter animation
     await new Promise(resolve => setTimeout(resolve, 0));
     
     try {
       // Request microphone access
-      console.log('Requesting microphone access...');
+      logger.debug('Requesting microphone access...');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      console.log('Microphone access granted');
+      logger.debug('Microphone access granted');
       micStreamRef.current = stream;
 
       // Create audio contexts (defer to avoid blocking)
@@ -217,7 +218,7 @@ export const useVoiceChat = (options: UseVoiceChatOptions): UseVoiceChatReturn =
             workletNode.connect(inputCtx.destination);
           } catch (workletError) {
             // Fallback to deprecated ScriptProcessor for browsers without AudioWorklet support
-            console.warn('AudioWorklet not supported, falling back to ScriptProcessor:', workletError);
+            logger.warn('AudioWorklet not supported, falling back to ScriptProcessor:', workletError);
             
             const processor = inputCtx.createScriptProcessor(4096, 1, 1);
             
@@ -349,7 +350,7 @@ export const useVoiceChat = (options: UseVoiceChatOptions): UseVoiceChatReturn =
 
         onClose: () => stopVoiceChat(),
         onError: (e: any) => {
-          console.error('Voice chat error:', e);
+          logger.error('Voice chat error:', e);
           stopVoiceChat();
         }
       }, userContext);
@@ -357,7 +358,7 @@ export const useVoiceChat = (options: UseVoiceChatOptions): UseVoiceChatReturn =
       sessionRef.current = sessionPromise;
       setIsVoiceEnabled(true);
     } catch (err: any) {
-      console.error("Microphone access denied or error:", err);
+      logger.error("Microphone access denied or error:", err);
       setIsVoiceEnabled(false);
       
       // Show user-friendly error message
@@ -372,13 +373,13 @@ export const useVoiceChat = (options: UseVoiceChatOptions): UseVoiceChatReturn =
   }, [userContext, onProjectShow, onInputTranscript, onOutputTranscript, onTurnComplete, onSystemMessage, stopVoiceChat]);
 
   const toggleVoice = useCallback(() => {
-    console.log('toggleVoice called, isVoiceEnabled:', isVoiceEnabled);
+    logger.debug('toggleVoice called, isVoiceEnabled:', isVoiceEnabled);
     if (isVoiceEnabled) {
       stopVoiceChat();
     } else {
-      console.log('Starting voice chat...');
+      logger.debug('Starting voice chat...');
       startVoiceChat().catch((err) => {
-        console.error('Error in startVoiceChat:', err);
+        logger.error('Error in startVoiceChat:', err);
       });
     }
   }, [isVoiceEnabled, startVoiceChat, stopVoiceChat]);

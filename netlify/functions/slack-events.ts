@@ -1,31 +1,32 @@
 import { Handler } from "@netlify/functions";
+import { serverLogger } from "../../utils/logger";
 
 // Use Firebase REST API instead of Admin SDK to avoid bundling issues
 const FIREBASE_DB_URL = "https://portfolio-chat-aab82-default-rtdb.firebaseio.com";
 
 export const handler: Handler = async (event) => {
-  console.log("=== SLACK EVENTS FUNCTION CALLED ===");
-  console.log("Method:", event.httpMethod);
-  console.log("Body:", event.body);
+  serverLogger.log("=== SLACK EVENTS FUNCTION CALLED ===");
+  serverLogger.log("Method:", event.httpMethod);
+  serverLogger.log("Body:", event.body);
   
   if (!event.body) {
-    console.log("ERROR: No body received");
+    serverLogger.log("ERROR: No body received");
     return { statusCode: 400, body: "No body" };
   }
 
   let body;
   try {
     body = JSON.parse(event.body);
-    console.log("Parsed body type:", body.type);
-    console.log("Event type:", body.event?.type);
+    serverLogger.log("Parsed body type:", body.type);
+    serverLogger.log("Event type:", body.event?.type);
   } catch (e) {
-    console.log("ERROR: Failed to parse JSON", e);
+    serverLogger.log("ERROR: Failed to parse JSON", e);
     return { statusCode: 400, body: "Invalid JSON" };
   }
   
   // URL Verification challenge - respond immediately
   if (body.type === "url_verification") {
-    console.log("Responding to Slack challenge");
+    serverLogger.log("Responding to Slack challenge");
     return {
       statusCode: 200,
       headers: { "Content-Type": "text/plain" },
@@ -34,49 +35,52 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    console.log("Event details:", JSON.stringify(body.event, null, 2));
-    console.log("Bot ID:", body.event?.bot_id);
-    console.log("Subtype:", body.event?.subtype);
+    serverLogger.log("Event details:", JSON.stringify(body.event, null, 2));
+    serverLogger.log("Bot ID:", body.event?.bot_id);
+    serverLogger.log("Subtype:", body.event?.subtype);
     
     // Handle message events from operator
     if (body.event?.type === "message") {
-      console.log("Message event detected");
+      serverLogger.log("Message event detected");
       
       if (body.event?.bot_id) {
-        console.log("Ignoring bot message");
+        serverLogger.log("Ignoring bot message");
         return { statusCode: 200, body: "ok" };
       }
       
       if (body.event?.subtype) {
-        console.log("Ignoring message with subtype:", body.event.subtype);
+        serverLogger.log("Ignoring message with subtype:", body.event.subtype);
         return { statusCode: 200, body: "ok" };
       }
       
       const { text, user } = body.event;
-      console.log("User:", user);
-      console.log("Text:", text);
+      serverLogger.log("User:", user);
+      serverLogger.log("Text:", text);
       
-      // Extract session ID from message format: [SESSION_ID] message
-      const sessionMatch = text?.match(/^\[([A-Z0-9-]+)\]\s*(.*)/);
-      console.log("Session match result:", sessionMatch);
+      // Extract session ID from message format: [SESSION_ID] message or [SESSION_ID]ai: message (invisible handoff)
+      const sessionMatch = text?.match(/^\[([A-Z0-9-]+)\]\s*(ai:)?\s*(.*)/i);
+      serverLogger.log("Session match result:", sessionMatch);
       
       if (sessionMatch) {
         const sessionId = sessionMatch[1];
-        const message = sessionMatch[2].trim();
-        console.log("Extracted session ID:", sessionId);
-        console.log("Extracted message:", message);
+        const isGhostMode = sessionMatch[2]?.toLowerCase() === "ai:";
+        const message = sessionMatch[3].trim();
+        serverLogger.log("Extracted session ID:", sessionId);
+        serverLogger.log("Ghost mode (invisible handoff):", isGhostMode);
+        serverLogger.log("Extracted message:", message);
         
         if (message) {
-          console.log(`Storing to Firebase: messages/${sessionId}`);
+          serverLogger.log(`Storing to Firebase: messages/${sessionId}`);
           
           // Use Firebase REST API (no auth needed since rules allow public write)
+          // If ghost mode (ai: prefix), prepend "ai:" to message for frontend to detect
           const firebasePayload = {
             sessionId,
             role: "operator",
-            content: message,
+            content: isGhostMode ? `ai:${message}` : message,
             timestamp: Date.now(),
           };
-          console.log("Firebase payload:", JSON.stringify(firebasePayload));
+          serverLogger.log("Firebase payload:", JSON.stringify(firebasePayload));
           
           const response = await fetch(
             `${FIREBASE_DB_URL}/messages/${sessionId}.json`,
@@ -88,27 +92,27 @@ export const handler: Handler = async (event) => {
           );
           
           const responseText = await response.text();
-          console.log("Firebase response status:", response.status);
-          console.log("Firebase response:", responseText);
+          serverLogger.log("Firebase response status:", response.status);
+          serverLogger.log("Firebase response:", responseText);
           
           if (response.ok) {
-            console.log("SUCCESS: Message stored in Firebase");
+            serverLogger.log("SUCCESS: Message stored in Firebase");
           } else {
-            console.error("ERROR: Firebase rejected the request");
+            serverLogger.error("ERROR: Firebase rejected the request");
           }
         } else {
-          console.log("No message content after session ID");
+          serverLogger.log("No message content after session ID");
         }
       } else {
-        console.log("Message does not match [SESSION_ID] format");
+        serverLogger.log("Message does not match [SESSION_ID] format");
       }
     } else {
-      console.log("Not a message event, type:", body.event?.type);
+      serverLogger.log("Not a message event, type:", body.event?.type);
     }
 
     return { statusCode: 200, body: "ok" };
   } catch (error) {
-    console.error("ERROR in handler:", error);
+    serverLogger.error("ERROR in handler:", error);
     return { statusCode: 200, body: "ok" };
   }
 };

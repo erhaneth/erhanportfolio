@@ -1,9 +1,22 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Message, Project } from "../types";
 import { PORTFOLIO_DATA, RIDDLE_DATA } from "../constants";
 import { generateResponse } from "../services/geminiService";
 import { useLanguage } from "../contexts/LanguageContext";
 import { t } from "../utils/translations";
+import { logger } from "../utils/logger";
+import {
+  notifyFirstQuestion,
+  notifyInterventionMoment,
+  notifyPredictiveSignal,
+  getSessionId,
+} from "../services/slackService";
+import {
+  detectInterventionMoment,
+  shouldSuggestLiveChat,
+  shouldAutoEscalate,
+  detectPredictiveSignals,
+} from "../utils/conversationAnalysis";
 
 const createWelcomeMessage = (lang: "en" | "tr"): Message => {
   const content =
@@ -32,12 +45,15 @@ interface UseMessagesReturn {
     append?: boolean
   ) => void;
   finalizeTransientMessages: () => void;
+  shouldSuggestLiveChat: boolean;
 }
 
 export const useMessages = (
   userContext: string,
   onProjectShow?: (project: Project) => void,
-  onResumeRequest?: () => void
+  onResumeRequest?: () => void,
+  onSuggestLiveChat?: () => void,
+  onAutoEscalate?: (sessionId: string, trigger: string) => void
 ): UseMessagesReturn => {
   const { language } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([
@@ -45,6 +61,9 @@ export const useMessages = (
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [riddleActive, setRiddleActive] = useState(false);
+  const [shouldSuggestChat, setShouldSuggestChat] = useState(false);
+  const hasNotifiedFirstQuestion = useRef(false);
+  const lastInterventionTrigger = useRef<string | null>(null);
 
   // Update welcome message when language changes
   useEffect(() => {
@@ -121,8 +140,105 @@ export const useMessages = (
         content: text,
         timestamp: Date.now(),
       };
+      
+      // Track user message count (excluding welcome message)
+      const userMessageCount = messages.filter((m) => m.role === "user").length;
+      const isFirstQuestion = userMessageCount === 0 && !hasNotifiedFirstQuestion.current;
+      
       setMessages((prev) => [...prev, userMsg]);
       setIsLoading(true);
+
+      // Notify Slack on first question
+      if (isFirstQuestion) {
+        hasNotifiedFirstQuestion.current = true;
+        const sessionId = getSessionId();
+        notifyFirstQuestion(sessionId, text, userContext).catch((err) =>
+          logger.error("Failed to notify first question:", err)
+        );
+      }
+
+      // Detect intervention moments
+      const conversationHistory = messages
+        .concat(userMsg)
+        .map((m) => ({ role: m.role, content: m.content }));
+      
+      const conversationContext = {
+        userContext,
+        messageCount: userMessageCount + 1,
+        recentMessages: conversationHistory.slice(-5),
+      };
+
+      const interventionTrigger = detectInterventionMoment(text, conversationContext);
+      logger.debug("Intervention trigger detected:", interventionTrigger);
+
+      // Detect predictive signals (what they're about to ask)
+      const predictiveSignal = detectPredictiveSignals(text, conversationContext);
+      if (predictiveSignal) {
+        logger.debug("Predictive signal detected:", predictiveSignal);
+        const sessionId = getSessionId();
+        notifyPredictiveSignal(sessionId, predictiveSignal, text, conversationHistory).catch(
+          (err) => logger.error("Failed to notify predictive signal:", err)
+        );
+      }
+
+      // Check for auto-escalation (invisible handoff)
+      const shouldEscalate = shouldAutoEscalate(
+        conversationContext,
+        interventionTrigger || undefined
+      );
+      logger.debug("Should auto-escalate:", shouldEscalate);
+
+      // Notify Slack if intervention moment detected
+      if (interventionTrigger && interventionTrigger !== lastInterventionTrigger.current) {
+        lastInterventionTrigger.current = interventionTrigger;
+        const sessionId = getSessionId();
+        const autoEscalated = shouldEscalate;
+        
+        logger.debug(`Sending intervention notification: ${interventionTrigger}, autoEscalated: ${autoEscalated}`);
+        
+        notifyInterventionMoment(
+          sessionId,
+          interventionTrigger,
+          conversationHistory,
+          userContext,
+          autoEscalated
+        )
+          .then((success) => {
+            logger.debug("Intervention notification sent:", success);
+          })
+          .catch((err) => {
+            logger.error("Failed to notify intervention moment:", err);
+          });
+
+        // Auto-escalate if conditions are met
+        if (shouldEscalate && onAutoEscalate) {
+          logger.debug("Calling onAutoEscalate");
+          onAutoEscalate(sessionId, interventionTrigger);
+        }
+      } else if (shouldEscalate && onAutoEscalate) {
+        // Auto-escalate even without specific trigger (e.g., high engagement)
+        logger.debug("Auto-escalating due to high engagement");
+        const sessionId = getSessionId();
+        onAutoEscalate(sessionId, "high_engagement");
+      }
+
+      // Check if we should suggest live chat
+      const shouldSuggest = shouldSuggestLiveChat(
+        {
+          userContext,
+          messageCount: userMessageCount + 1,
+          recentMessages: conversationHistory.slice(-5),
+        },
+        interventionTrigger || undefined
+      );
+
+      if (shouldSuggest && !shouldSuggestChat && onSuggestLiveChat) {
+        setShouldSuggestChat(true);
+        // Delay the suggestion slightly so it feels natural
+        setTimeout(() => {
+          onSuggestLiveChat();
+        }, 2000);
+      }
 
       let projectToShow: Project | null = null;
 
@@ -161,18 +277,9 @@ export const useMessages = (
           userContext
         );
 
-        const responseText =
-          response.text || t("chat.signalInterrupted", language);
-        const assistantMsg: Message = {
-          id: `${Date.now() + 1}`,
-          role: "assistant",
-          content: responseText,
-          timestamp: Date.now(),
-        };
-
-        setMessages((prev) => [...prev, assistantMsg]);
-
-        if (response.functionCalls) {
+        // Handle function calls first, then text response
+        if (response.functionCalls && response.functionCalls.length > 0) {
+          // Process function calls
           for (const fc of response.functionCalls) {
             if (fc.name === "showProject") {
               const pId = (fc.args as any).projectId;
@@ -198,12 +305,34 @@ export const useMessages = (
             }
           }
         }
+
+        // Add text response if present (may be empty if only function calls)
+        const responseText = response.text;
+        if (responseText && responseText.trim()) {
+          const assistantMsg: Message = {
+            id: `${Date.now() + 1}`,
+            role: "assistant",
+            content: responseText,
+            timestamp: Date.now(),
+          };
+          setMessages((prev) => [...prev, assistantMsg]);
+        } else if (!response.functionCalls || response.functionCalls.length === 0) {
+          // Only show error if there's no text AND no function calls
+          const errorMsg: Message = {
+            id: `${Date.now() + 1}`,
+            role: "assistant",
+            content: t("chat.signalInterrupted", language),
+            timestamp: Date.now(),
+          };
+          setMessages((prev) => [...prev, errorMsg]);
+        }
+
       } catch (error) {
-        console.error(error);
+        logger.error(error);
         setMessages((prev) => [
           ...prev,
           {
-            id: "err",
+            id: `err-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
             role: "system",
             content:
               "[INTERNAL_ERROR_0x99]: System instability. Connection lost.",
@@ -228,5 +357,6 @@ export const useMessages = (
     handleSendMessage,
     updateTransientMessage,
     finalizeTransientMessages,
+    shouldSuggestLiveChat: shouldSuggestChat,
   };
 };

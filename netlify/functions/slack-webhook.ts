@@ -1,7 +1,8 @@
 import { Handler } from "@netlify/functions";
+import { serverLogger } from "../../utils/logger";
 
 export const handler: Handler = async (event) => {
-  console.log("slack-webhook called");
+  serverLogger.log("slack-webhook called");
   
   // Only allow POST
   if (event.httpMethod !== "POST") {
@@ -9,16 +10,16 @@ export const handler: Handler = async (event) => {
   }
 
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
-  console.log("Webhook URL exists:", !!webhookUrl);
+  serverLogger.log("Webhook URL exists:", !!webhookUrl);
   
   if (!webhookUrl) {
-    console.error("SLACK_WEBHOOK_URL not configured");
+    serverLogger.error("SLACK_WEBHOOK_URL not configured");
     return { statusCode: 500, body: "Slack webhook not configured" };
   }
 
   try {
     const payload = JSON.parse(event.body || "{}");
-    console.log("Sending to Slack...");
+    serverLogger.log("Sending to Slack...");
 
     const response = await fetch(webhookUrl, {
       method: "POST",
@@ -26,17 +27,17 @@ export const handler: Handler = async (event) => {
       body: JSON.stringify(payload),
     });
 
-    console.log("Slack response status:", response.status);
+    serverLogger.log("Slack response status:", response.status);
     
     if (response.ok) {
       return { statusCode: 200, body: "ok" };
     } else {
       const errorText = await response.text();
-      console.error("Slack error:", errorText);
+      serverLogger.error("Slack error:", errorText);
       return { statusCode: response.status, body: "Slack error" };
     }
   } catch (error) {
-    console.error("Slack webhook error:", error);
+    serverLogger.error("Slack webhook error:", error);
     return { statusCode: 500, body: "Internal error" };
   }
 };

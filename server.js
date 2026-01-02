@@ -26,9 +26,12 @@ app.use(express.json());
 
 // Check if API key is loaded
 if (!process.env.RESEND_API_KEY) {
+  // Server logs kept for local development
   console.error('❌ RESEND_API_KEY not found in environment variables!');
+  // Server logs kept for local development
   console.error('   Make sure .env.local exists and contains RESEND_API_KEY');
 } else {
+  // Server logs kept for local development
   console.log('✅ RESEND_API_KEY loaded');
 }
 
@@ -60,7 +63,8 @@ app.post('/api/send-resume', async (req, res) => {
     try {
       var resumeBuffer = readFileSync(resumePath);
     } catch (fileError) {
-      console.error('Failed to read resume file:', fileError);
+      // Server logs kept for local development
+  console.error('Failed to read resume file:', fileError);
       return res.status(500).json({
         error: 'Resume file not found. Please check the file path.',
       });
@@ -93,7 +97,8 @@ app.post('/api/send-resume', async (req, res) => {
     });
 
     if (error) {
-      console.error('Resend error:', JSON.stringify(error, null, 2));
+      // Server logs kept for local development
+  console.error('Resend error:', JSON.stringify(error, null, 2));
       return res.status(500).json({
         error: error.message || 'Failed to send email. Please try again later.',
         details: error,
@@ -106,7 +111,8 @@ app.post('/api/send-resume', async (req, res) => {
       emailId: data?.id,
     });
   } catch (error) {
-    console.error('Error sending resume:', error);
+    // Server logs kept for local development
+  console.error('Error sending resume:', error);
     return res.status(500).json({
       error: error.message || 'Failed to send resume. Please try again later.',
     });
@@ -114,8 +120,11 @@ app.post('/api/send-resume', async (req, res) => {
 });
 
 app.listen(PORT, () => {
+  // Server logs kept for local development
   console.log(`🚀 Local API server running on http://localhost:${PORT}`);
+  // Server logs kept for local development
   console.log(`📧 Resume API: http://localhost:${PORT}/api/send-resume`);
+  // Server logs kept for local development
   console.log(`✅ Make sure Vite dev server is running on port 3000`);
 });
 

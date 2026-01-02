@@ -36,6 +36,7 @@ export const sendResume = async (email: string, name: string): Promise<SendResum
       message: data.message || 'Resume sent successfully!',
     };
   } catch (error) {
+    // Keep error logging for production debugging
     console.error('Error sending resume:', error);
     return {
       success: false,

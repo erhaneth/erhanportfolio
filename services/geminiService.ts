@@ -131,6 +131,7 @@ NEVER use generic phrases like "passionate learner" or "quick to adapt". Instead
       "Erhan brings strong experience in the technologies you're looking for, with a proven track record of building production-ready AI applications."
     );
   } catch (error) {
+    // Keep error logging for production debugging
     console.error("Failed to generate pitch:", error);
     return "Erhan brings strong experience in the technologies you're looking for, with a proven track record of building production-ready AI applications.";
   }

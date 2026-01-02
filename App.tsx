@@ -15,8 +15,13 @@ import ContextPills, {
 import { useMessages } from "./hooks/useMessages";
 import { useVoiceChat } from "./hooks/useVoiceChat";
 import { sendResume } from "./services/emailService";
-import { sendMessageToSlack, getSessionId } from "./services/slackService";
+import {
+  sendMessageToSlack,
+  getSessionId,
+  notifyOperatorRequest,
+} from "./services/slackService";
 import { useLanguage } from "./contexts/LanguageContext";
+import { logger } from "./utils/logger";
 
 type UserMode = "hiring" | "visiting" | null;
 
@@ -35,6 +40,7 @@ const App: React.FC = () => {
   const [showMissionBriefing, setShowMissionBriefing] = useState(false);
   const [missionJobDescription, setMissionJobDescription] = useState("");
   const [isOperatorMode, setIsOperatorMode] = useState(false);
+  const [hasOperatorResponded, setHasOperatorResponded] = useState(false);
 
   // Context pill selections
   const [userMode, setUserMode] = useState<UserMode>(null);
@@ -63,7 +69,36 @@ const App: React.FC = () => {
     handleSendMessage,
     updateTransientMessage,
     finalizeTransientMessages,
-  } = useMessages(userContext, setActiveProject, () => setShowEmailModal(true));
+    shouldSuggestLiveChat,
+  } = useMessages(
+    userContext,
+    setActiveProject,
+    () => setShowEmailModal(true),
+    () => {
+      // Suggest live chat when appropriate (but button is now hidden, so this is just informational)
+      const suggestionText =
+        language === "tr"
+          ? "💬 Erhan bu konuşmayı izliyor ve gerektiğinde müdahale edebilir."
+          : "💬 Erhan is monitoring this conversation and can jump in when needed.";
+      addSystemMessage(suggestionText);
+    },
+    (sessionId: string, trigger: string) => {
+      // Auto-escalate: Enable operator mode automatically
+      if (!isOperatorMode) {
+        setIsOperatorMode(true);
+        // Notify Slack that auto-escalation happened
+        const sessionId = getSessionId();
+        notifyOperatorRequest(
+          sessionId,
+          messages.map((m) => ({ role: m.role, content: m.content })),
+          userContext
+        ).catch((err) => logger.error("Failed to auto-escalate:", err));
+
+        // Subtle indicator (only shows after operator responds, not immediately)
+        // We'll show it when operator actually sends a message
+      }
+    }
+  );
 
   // Handle resume email sending
   const handleSendResume = useCallback(
@@ -105,8 +140,8 @@ const App: React.FC = () => {
       onProjectShow: setActiveProject,
       onInputTranscript: useCallback(
         (text: string) => {
-          console.log("[App] onInputTranscript called with text:", text);
-          console.log("[App] Calling detectAndSetLanguage for voice input...");
+          logger.debug("[App] onInputTranscript called with text:", text);
+          logger.debug("[App] Calling detectAndSetLanguage for voice input...");
           detectAndSetLanguage(text);
           updateTransientMessage("user", text);
         },
@@ -126,10 +161,10 @@ const App: React.FC = () => {
   // Handle text message submission
   const onSendMessage = useCallback(
     async (text: string) => {
-      console.log("[App] onSendMessage called with text:", text);
-      console.log("[App] Calling detectAndSetLanguage...");
+      logger.debug("[App] onSendMessage called with text:", text);
+      logger.debug("[App] Calling detectAndSetLanguage...");
       detectAndSetLanguage(text);
-      
+
       // Forward to Slack if operator mode is active
       if (isOperatorMode) {
         sendMessageToSlack({
@@ -139,7 +174,7 @@ const App: React.FC = () => {
           timestamp: new Date(),
         });
       }
-      
+
       await handleSendMessage(text);
     },
     [handleSendMessage, detectAndSetLanguage, isOperatorMode]
@@ -225,25 +260,37 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Operator Direct Channel */}
-          <div className="border-b border-[#003B00] pb-4">
-            <OperatorStatus 
-              conversationHistory={messages.map(m => ({ role: m.role, content: m.content }))}
-              userContext={userContext}
-              onOperatorModeChange={(active) => {
-                setIsOperatorMode(active);
-                if (active) {
-                  addSystemMessage("🔗 UPLINK ESTABLISHED — Erhan has been notified and is monitoring this conversation.");
-                } else {
-                  addSystemMessage("📡 UPLINK TERMINATED — Returning to AI mode.");
-                }
-              }}
-              onOperatorMessage={(message) => {
-                // Display operator's message in the chat
-                addSystemMessage(`👤 OPERATOR ERHAN: ${message}`);
-              }}
-            />
-          </div>
+          {/* Operator Status (only shows after operator responds) */}
+          {isOperatorMode && (
+            <div className="border-b border-[#003B00] pb-4">
+              <OperatorStatus
+                conversationHistory={messages.map((m) => ({
+                  role: m.role,
+                  content: m.content,
+                }))}
+                userContext={userContext}
+                isOperatorMode={isOperatorMode}
+                hasOperatorResponded={hasOperatorResponded}
+                onOperatorMessage={(message) => {
+                  // Check if message is from operator (not AI ghost mode)
+                  // Format: [SESSION_ID] message (normal) or [SESSION_ID]ai: message (ghost)
+                  const isGhostMode = message.toLowerCase().startsWith("ai:");
+                  const actualMessage = isGhostMode
+                    ? message.substring(3).trim()
+                    : message;
+
+                  if (isGhostMode) {
+                    // Invisible handoff - respond as AI
+                    addSystemMessage(actualMessage);
+                  } else {
+                    // Visible response - show as Erhan
+                    setHasOperatorResponded(true);
+                    addSystemMessage(`👤 Erhan: ${actualMessage}`);
+                  }
+                }}
+              />
+            </div>
+          )}
 
           <div className="space-y-4 pt-2">
             {/* Main Voice Button */}

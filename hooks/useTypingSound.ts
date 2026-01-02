@@ -67,7 +67,7 @@ export const useTypingSound = () => {
         gainNode.disconnect();
       };
     } catch (e) {
-      console.warn('Audio playback failed:', e);
+      // Audio playback warnings removed for production
     }
   }, [getAudioContext]);
 

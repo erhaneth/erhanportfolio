@@ -31,7 +31,7 @@ function LanguageProvider({ children }: { children: ReactNode }) {
       if (!text || text.trim().length === 0) return;
 
       const detected = detectLanguageLocal(text);
-      console.log("[Language Context] Detection result:", detected);
+      // Language detection logging removed for production
 
       if (detected === "tr" && language === "en") {
         setLanguage("tr");
