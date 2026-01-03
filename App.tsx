@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { Project } from "./types";
 import { PORTFOLIO_DATA } from "./constants";
 import ChatInterface from "./components/ChatInterface";
@@ -12,6 +12,7 @@ import OperatorStatus from "./components/OperatorStatus";
 import ContextPills, {
   generateContextFromPills,
 } from "./components/ContextPills";
+import GitHeatmap from "./components/GitHeatmap";
 import { useMessages } from "./hooks/useMessages";
 import { useVoiceChat } from "./hooks/useVoiceChat";
 import { sendResume } from "./services/emailService";
@@ -28,6 +29,24 @@ const App: React.FC = () => {
     showActivation,
     setShowActivation,
   } = useLanguage();
+
+  // Monitor network connectivity
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log("[App] Network: Online");
+    };
+    const handleOffline = () => {
+      console.warn("[App] Network: Offline");
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [showContextPanel, setShowContextPanel] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -35,6 +54,16 @@ const App: React.FC = () => {
   const [showMissionBriefing, setShowMissionBriefing] = useState(false);
   const [missionJobDescription, setMissionJobDescription] = useState("");
   const [isOperatorMode, setIsOperatorMode] = useState(false);
+  const [showGitHeatmap, setShowGitHeatmap] = useState(false);
+  const [isClosingProject, setIsClosingProject] = useState(false);
+  const [isClosingHeatmap, setIsClosingHeatmap] = useState(false);
+
+  // Handle project switching - reset closing state when new project is set
+  const handleProjectShow = useCallback((project: Project) => {
+    // Always reset closing state when showing a project (whether switching or first time)
+    setIsClosingProject(false);
+    setActiveProject(project);
+  }, []);
 
   // Context pill selections
   const [userMode, setUserMode] = useState<UserMode>(null);
@@ -63,7 +92,12 @@ const App: React.FC = () => {
     handleSendMessage,
     updateTransientMessage,
     finalizeTransientMessages,
-  } = useMessages(userContext, setActiveProject, () => setShowEmailModal(true));
+  } = useMessages(
+    userContext,
+    handleProjectShow,
+    () => setShowEmailModal(true),
+    () => setShowGitHeatmap(true)
+  );
 
   // Handle resume email sending
   const handleSendResume = useCallback(
@@ -102,7 +136,7 @@ const App: React.FC = () => {
   const { isVoiceEnabled, isAiTalking, userVolume, aiVolume, toggleVoice } =
     useVoiceChat({
       userContext,
-      onProjectShow: setActiveProject,
+      onProjectShow: handleProjectShow,
       onInputTranscript: useCallback(
         (text: string) => {
           console.log("[App] onInputTranscript called with text:", text);
@@ -121,6 +155,7 @@ const App: React.FC = () => {
       onTurnComplete: finalizeTransientMessages,
       onSystemMessage: addSystemMessage,
       onResumeRequest: () => setShowEmailModal(true),
+      onShowGitHeatmap: () => setShowGitHeatmap(true),
     });
 
   // Handle text message submission
@@ -129,7 +164,7 @@ const App: React.FC = () => {
       console.log("[App] onSendMessage called with text:", text);
       console.log("[App] Calling detectAndSetLanguage...");
       detectAndSetLanguage(text);
-      
+
       // Forward to Slack if operator mode is active
       if (isOperatorMode) {
         sendMessageToSlack({
@@ -139,7 +174,7 @@ const App: React.FC = () => {
           timestamp: new Date(),
         });
       }
-      
+
       await handleSendMessage(text);
     },
     [handleSendMessage, detectAndSetLanguage, isOperatorMode]
@@ -158,15 +193,15 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen relative flex flex-col md:flex-row p-4 gap-4 max-w-screen-2xl mx-auto overflow-hidden text-[#00FF41]">
+    <div className="min-h-screen h-screen relative flex flex-col lg:flex-row p-2 sm:p-4 gap-2 sm:gap-4 max-w-screen-2xl mx-auto overflow-x-hidden text-[#00FF41]">
       <MatrixRain />
 
-      <aside className="relative z-20 w-full md:w-80 md:h-[calc(100vh-2rem)] flex flex-col gap-2">
-        <div className="glass-terminal border border-[#003B00] matrix-border-glow p-6 flex flex-col gap-4 flex-shrink-0">
+      <aside className="relative z-20 w-full lg:w-80 lg:h-[calc(100vh-1rem)] lg:max-h-[calc(100vh-1rem)] flex flex-col gap-2 overflow-y-auto lg:overflow-y-auto">
+        <div className="glass-terminal border border-[#003B00] matrix-border-glow p-3 sm:p-4 lg:p-6 flex flex-col gap-3 sm:gap-4 flex-shrink-0">
           <div className="flex flex-col gap-4 border-b border-[#003B00] pb-4">
             <button
               onClick={() => window.location.reload()}
-              className="w-28 h-28 mx-auto bg-transparent border-2 border-[#00FF41] flex items-center justify-center relative overflow-hidden shadow-[0_0_20px_rgba(0,255,65,0.3)] hover:shadow-[0_0_30px_rgba(0,255,65,0.5)] hover:border-[#00FF41] transition-all duration-200 cursor-pointer group"
+              className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 mx-auto bg-transparent border-2 border-[#00FF41] flex items-center justify-center relative overflow-hidden shadow-[0_0_20px_rgba(0,255,65,0.3)] hover:shadow-[0_0_30px_rgba(0,255,65,0.5)] hover:border-[#00FF41] transition-all duration-200 cursor-pointer group"
               aria-label="Reload page"
             >
               <img
@@ -176,10 +211,10 @@ const App: React.FC = () => {
               />
             </button>
             <div className="text-center">
-              <h1 className="text-xl font-bold tracking-widest matrix-text-glow uppercase">
+              <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-widest matrix-text-glow uppercase">
                 {PORTFOLIO_DATA.name}
               </h1>
-              <p className="text-[10px] text-[#008F11] font-bold mt-1">
+              <p className="text-[9px] sm:text-[10px] text-[#008F11] font-bold mt-1">
                 MAIN_CORE: OPERATOR
               </p>
 
@@ -227,15 +262,22 @@ const App: React.FC = () => {
 
           {/* Operator Direct Channel */}
           <div className="border-b border-[#003B00] pb-4">
-            <OperatorStatus 
-              conversationHistory={messages.map(m => ({ role: m.role, content: m.content }))}
+            <OperatorStatus
+              conversationHistory={messages.map((m) => ({
+                role: m.role,
+                content: m.content,
+              }))}
               userContext={userContext}
               onOperatorModeChange={(active) => {
                 setIsOperatorMode(active);
                 if (active) {
-                  addSystemMessage("🔗 UPLINK ESTABLISHED — Erhan has been notified and is monitoring this conversation.");
+                  addSystemMessage(
+                    "🔗 UPLINK ESTABLISHED — Erhan has been notified and is monitoring this conversation."
+                  );
                 } else {
-                  addSystemMessage("📡 UPLINK TERMINATED — Returning to AI mode.");
+                  addSystemMessage(
+                    "📡 UPLINK TERMINATED — Returning to AI mode."
+                  );
                 }
               }}
               onOperatorMessage={(message) => {
@@ -343,7 +385,7 @@ const App: React.FC = () => {
         )}
 
         {/* Network Activity */}
-        <div className="glass-terminal border border-[#003B00] p-4 flex-1 min-h-[120px] overflow-hidden flex flex-col">
+        <div className="glass-terminal border border-[#003B00] p-3 sm:p-4 flex-1 min-h-[100px] sm:min-h-[120px] overflow-hidden flex flex-col hidden sm:flex">
           <p className="text-[10px] text-[#008F11] uppercase font-bold mb-2 flex-shrink-0">
             {translate("context.networkActivity")}
           </p>
@@ -359,10 +401,10 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      <main className="relative z-20 flex-1 flex flex-col md:flex-row gap-4 h-[calc(100vh-2rem)]">
+      <main className="relative z-20 flex-1 flex flex-col lg:flex-row gap-2 sm:gap-4 h-full lg:h-[calc(100vh-1rem)] min-h-0 overflow-hidden">
         <section
-          className={`flex-1 transition-all duration-700 ease-in-out ${
-            activeProject ? "md:flex-[0.45]" : "md:flex-1"
+          className={`flex-1 transition-all duration-700 ease-in-out overflow-hidden flex flex-col ${
+            activeProject || showGitHeatmap ? "lg:flex-[0.45]" : "lg:flex-1"
           }`}
         >
           <ChatInterface
@@ -372,15 +414,131 @@ const App: React.FC = () => {
           />
         </section>
 
-        {activeProject && (
-          <section className="flex-1 md:flex-[0.55] animate-in slide-in-from-right fade-in duration-700">
-            <ProjectDisplay
-              project={activeProject}
-              onClose={() => setActiveProject(null)}
-            />
+        {/* Desktop: Side-by-side display */}
+        {(activeProject || showGitHeatmap) && (
+          <section className="hidden lg:flex flex-1 lg:flex-[0.55] w-full lg:w-auto animate-in slide-in-from-right fade-in duration-700 mt-4 lg:mt-0 overflow-y-auto max-h-[50vh] lg:max-h-[calc(100vh-1rem)]">
+            {activeProject ? (
+              <ProjectDisplay
+                project={activeProject}
+                onClose={() => setActiveProject(null)}
+              />
+            ) : (
+              <GitHeatmap
+                onClose={() => setShowGitHeatmap(false)}
+                githubUsername="erhaneth" // You can make this configurable via .env
+              />
+            )}
           </section>
         )}
       </main>
+
+      {/* Mobile: Modal/Popup display */}
+      {activeProject && (
+        <div
+          className={`lg:hidden fixed inset-0 z-[100] flex items-end justify-center transition-opacity duration-500 ${
+            isClosingProject ? "opacity-0 pointer-events-none" : "opacity-100"
+          }`}
+          style={{
+            background: "rgba(0, 0, 0, 0.25)",
+            backdropFilter: "blur(5px) saturate(100%)",
+            WebkitBackdropFilter: "blur(15px) saturate(150%)",
+          }}
+          onClick={(e) => {
+            // Close on backdrop click
+            if (e.target === e.currentTarget) {
+              setIsClosingProject(true);
+              setTimeout(() => {
+                setActiveProject(null);
+                setIsClosingProject(false);
+              }, 500);
+            }
+          }}
+        >
+          <div
+            className={`w-full max-h-[85vh] mt-16 sm:mt-20 flex flex-col rounded-t-3xl overflow-hidden ${
+              isClosingProject ? "animate-slide-down" : "animate-slide-up"
+            }`}
+            style={{
+              background: "rgba(2, 2, 2, 0.4)",
+              backdropFilter: "blur(30px) saturate(180%)",
+              WebkitBackdropFilter: "blur(30px) saturate(180%)",
+              border: "1px solid rgba(0, 255, 65, 0.2)",
+              boxShadow:
+                "0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 255, 65, 0.1) inset",
+            }}
+            onClick={(e) => e.stopPropagation()}
+            key={activeProject.id}
+          >
+            {/* Handle bar */}
+            <div className="flex justify-center pt-2 pb-1">
+              <div className="w-12 h-1 bg-[#00FF41]/30 rounded-full" />
+            </div>
+            <ProjectDisplay
+              project={activeProject}
+              onClose={() => {
+                setIsClosingProject(true);
+                setTimeout(() => {
+                  setActiveProject(null);
+                  setIsClosingProject(false);
+                }, 500);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {showGitHeatmap && (
+        <div
+          className={`lg:hidden fixed inset-0 z-[100] flex items-end justify-center transition-opacity duration-500 ${
+            isClosingHeatmap ? "opacity-0 pointer-events-none" : "opacity-100"
+          }`}
+          style={{
+            background: "rgba(0, 0, 0, 0.25)",
+            backdropFilter: "blur(15px) saturate(150%)",
+            WebkitBackdropFilter: "blur(15px) saturate(150%)",
+          }}
+          onClick={(e) => {
+            // Close on backdrop click
+            if (e.target === e.currentTarget) {
+              setIsClosingHeatmap(true);
+              setTimeout(() => {
+                setShowGitHeatmap(false);
+                setIsClosingHeatmap(false);
+              }, 500);
+            }
+          }}
+        >
+          <div
+            className={`w-full max-h-[85vh] mt-16 sm:mt-20 flex flex-col rounded-t-3xl overflow-hidden ${
+              isClosingHeatmap ? "animate-slide-down" : "animate-slide-up"
+            }`}
+            style={{
+              background: "rgba(2, 2, 2, 0.4)",
+              backdropFilter: "blur(30px) saturate(180%)",
+              WebkitBackdropFilter: "blur(30px) saturate(180%)",
+              border: "1px solid rgba(0, 255, 65, 0.2)",
+              boxShadow:
+                "0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 255, 65, 0.1) inset",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Handle bar */}
+            <div className="flex justify-center pt-2 pb-1">
+              <div className="w-12 h-1 bg-[#00FF41]/30 rounded-full" />
+            </div>
+            <GitHeatmap
+              onClose={() => {
+                setIsClosingHeatmap(true);
+                setTimeout(() => {
+                  setShowGitHeatmap(false);
+                  setIsClosingHeatmap(false);
+                }, 500);
+              }}
+              githubUsername="erhaneth" // You can make this configurable via .env
+            />
+          </div>
+        </div>
+      )}
 
       {/* Email Modal */}
       <EmailModal
@@ -401,7 +559,7 @@ const App: React.FC = () => {
       {showMissionBriefing && missionJobDescription && (
         <MissionBriefing
           jobDescription={missionJobDescription}
-          onProjectSelect={setActiveProject}
+          onProjectSelect={handleProjectShow}
           onClose={() => setShowMissionBriefing(false)}
         />
       )}

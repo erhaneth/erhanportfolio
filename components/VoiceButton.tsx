@@ -118,12 +118,26 @@ const VoiceButton: React.FC<VoiceButtonProps> = ({
 
   return (
     <button
-      onClick={onClick}
+      onClick={(e) => {
+        // Ensure click event is properly handled for mobile
+        e.preventDefault();
+        e.stopPropagation();
+        // Call onClick immediately to provide visual feedback
+        onClick();
+      }}
+      onTouchEnd={(e) => {
+        // Handle touch events for mobile - use onTouchEnd to ensure click fires
+        e.preventDefault();
+        onClick();
+      }}
       className={`
-        relative w-full py-4 px-4 border-2 font-bold transition-all duration-200
-        flex items-center justify-center gap-4 group overflow-hidden
+        relative w-full py-3 sm:py-4 px-3 sm:px-4 border-2 font-bold transition-all duration-200
+        flex items-center justify-center gap-2 sm:gap-4 group overflow-hidden
+        touch-manipulation active:scale-95
         ${styles.bg} ${styles.text} ${styles.border} ${styles.glow}
       `}
+      style={{ WebkitTapHighlightColor: 'transparent' }}
+      type="button"
     >
       {/* Scanning line effect when inactive */}
       {!isActive && (
