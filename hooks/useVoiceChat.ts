@@ -1,11 +1,15 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { Project } from '../types';
-import { PORTFOLIO_DATA } from '../constants';
-import { connectLive, decode, decodeAudioData } from '../services/geminiService';
+import { useState, useRef, useCallback, useEffect } from "react";
+import { Project } from "../types";
+import { PORTFOLIO_DATA } from "../constants";
+import {
+  connectLive,
+  decode,
+  decodeAudioData,
+} from "../services/geminiService";
 
 // Base64 encode helper
 function encode(bytes: Uint8Array): string {
-  let binary = '';
+  let binary = "";
   const len = bytes.byteLength;
   for (let i = 0; i < len; i++) {
     binary += String.fromCharCode(bytes[i]);
@@ -21,6 +25,7 @@ interface UseVoiceChatOptions {
   onTurnComplete?: () => void;
   onSystemMessage?: (content: string) => void;
   onResumeRequest?: () => void;
+  onShowGitHeatmap?: () => void;
 }
 
 interface UseVoiceChatReturn {
@@ -33,7 +38,9 @@ interface UseVoiceChatReturn {
   toggleVoice: () => void;
 }
 
-export const useVoiceChat = (options: UseVoiceChatOptions): UseVoiceChatReturn => {
+export const useVoiceChat = (
+  options: UseVoiceChatOptions
+): UseVoiceChatReturn => {
   const {
     userContext,
     onProjectShow,
@@ -41,7 +48,8 @@ export const useVoiceChat = (options: UseVoiceChatOptions): UseVoiceChatReturn =
     onOutputTranscript,
     onTurnComplete,
     onSystemMessage,
-    onResumeRequest
+    onResumeRequest,
+    onShowGitHeatmap,
   } = options;
 
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
@@ -83,7 +91,7 @@ export const useVoiceChat = (options: UseVoiceChatOptions): UseVoiceChatReturn =
 
     // Stop mic stream
     if (micStreamRef.current) {
-      micStreamRef.current.getTracks().forEach(track => track.stop());
+      micStreamRef.current.getTracks().forEach((track) => track.stop());
       micStreamRef.current = null;
     }
 
@@ -98,11 +106,17 @@ export const useVoiceChat = (options: UseVoiceChatOptions): UseVoiceChatReturn =
     sourcesRef.current.clear();
 
     // Close audio contexts
-    if (inputAudioCtxRef.current && inputAudioCtxRef.current.state !== 'closed') {
+    if (
+      inputAudioCtxRef.current &&
+      inputAudioCtxRef.current.state !== "closed"
+    ) {
       inputAudioCtxRef.current.close();
       inputAudioCtxRef.current = null;
     }
-    if (outputAudioCtxRef.current && outputAudioCtxRef.current.state !== 'closed') {
+    if (
+      outputAudioCtxRef.current &&
+      outputAudioCtxRef.current.state !== "closed"
+    ) {
       outputAudioCtxRef.current.close();
       outputAudioCtxRef.current = null;
     }
@@ -115,36 +129,58 @@ export const useVoiceChat = (options: UseVoiceChatOptions): UseVoiceChatReturn =
   }, []);
 
   const startVoiceChat = useCallback(async () => {
-    console.log('startVoiceChat called');
-    
+    console.log("startVoiceChat called");
+
     // Defer heavy initialization to next event loop to avoid blocking typewriter animation
-    await new Promise(resolve => setTimeout(resolve, 0));
-    
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     try {
-      // Request microphone access
-      console.log('Requesting microphone access...');
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      console.log('Microphone access granted');
+      // Check if getUserMedia is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("getUserMedia is not supported in this browser");
+      }
+
+      // Request microphone access with better error handling for mobile
+      console.log("Requesting microphone access...");
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 16000,
+        },
+      });
+      console.log("Microphone access granted");
       micStreamRef.current = stream;
 
       // Create audio contexts (defer to avoid blocking)
-      await new Promise(resolve => setTimeout(resolve, 0));
-      
-      const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({
-        sampleRate: 16000
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Check if AudioContext is available
+      const AudioContextClass =
+        window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) {
+        throw new Error("AudioContext is not supported in this browser");
+      }
+
+      const inputCtx = new AudioContextClass({
+        sampleRate: 16000,
       });
-      const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({
-        sampleRate: 24000
+      const outputCtx = new AudioContextClass({
+        sampleRate: 24000,
       });
-      
+
       // Resume audio contexts if suspended (browser autoplay policy)
-      if (inputCtx.state === 'suspended') {
+      // This is critical on mobile - must be called after user interaction
+      if (inputCtx.state === "suspended") {
+        console.log("Resuming input audio context...");
         await inputCtx.resume();
       }
-      if (outputCtx.state === 'suspended') {
+      if (outputCtx.state === "suspended") {
+        console.log("Resuming output audio context...");
         await outputCtx.resume();
       }
-      
+
       inputAudioCtxRef.current = inputCtx;
       outputAudioCtxRef.current = outputCtx;
 
@@ -183,202 +219,303 @@ export const useVoiceChat = (options: UseVoiceChatOptions): UseVoiceChatReturn =
       updateVolumes();
 
       // Connect to Gemini Live API
-      const sessionPromise = connectLive({
-        onOpen: async () => {
-          const source = inputCtx.createMediaStreamSource(stream);
-          source.connect(userAnalyser);
+      const sessionPromise = connectLive(
+        {
+          onOpen: async () => {
+            const source = inputCtx.createMediaStreamSource(stream);
+            source.connect(userAnalyser);
 
-          // Try to use AudioWorklet, fall back to ScriptProcessor
-          try {
-            await inputCtx.audioWorklet.addModule('/worklets/audioProcessor.js');
-            
-            const workletNode = new AudioWorkletNode(inputCtx, 'audio-capture-processor');
-            workletNodeRef.current = workletNode;
+            // Try to use AudioWorklet, fall back to ScriptProcessor
+            try {
+              // Determine the correct path for the worklet
+              // Use base URL to handle different deployment scenarios
+              const baseUrl = window.location.origin;
+              const workletPath = `${baseUrl}/worklets/audioProcessor.js`;
 
-            workletNode.port.onmessage = (event) => {
-              if (event.data.type === 'pcm') {
-                const pcmData = new Uint8Array(event.data.data);
-                const base64Data = encode(pcmData);
-                
-                sessionPromise.then(session => {
+              console.log("Loading AudioWorklet from:", workletPath);
+
+              // On mobile, AudioWorklet may need additional time to load
+              try {
+                await Promise.race([
+                  inputCtx.audioWorklet.addModule(workletPath),
+                  new Promise<never>((_, reject) =>
+                    setTimeout(
+                      () => reject(new Error("AudioWorklet load timeout")),
+                      5000
+                    )
+                  ),
+                ]);
+              } catch (loadError) {
+                // If absolute path fails, try relative path
+                console.warn(
+                  "Failed to load with absolute path, trying relative:",
+                  loadError
+                );
+                await inputCtx.audioWorklet.addModule(
+                  "/worklets/audioProcessor.js"
+                );
+              }
+
+              const workletNode = new AudioWorkletNode(
+                inputCtx,
+                "audio-capture-processor"
+              );
+              workletNodeRef.current = workletNode;
+
+              workletNode.port.onmessage = (event) => {
+                if (event.data.type === "pcm") {
+                  const pcmData = new Uint8Array(event.data.data);
+                  const base64Data = encode(pcmData);
+
+                  sessionPromise.then((session) => {
+                    if (session) {
+                      session.sendRealtimeInput({
+                        media: {
+                          data: base64Data,
+                          mimeType: "audio/pcm;rate=16000",
+                        },
+                      });
+                    }
+                  });
+                }
+              };
+
+              source.connect(workletNode);
+              workletNode.connect(inputCtx.destination);
+            } catch (workletError) {
+              // Fallback to deprecated ScriptProcessor for browsers without AudioWorklet support
+              console.warn(
+                "AudioWorklet not supported, falling back to ScriptProcessor:",
+                workletError
+              );
+
+              const processor = inputCtx.createScriptProcessor(4096, 1, 1);
+
+              processor.onaudioprocess = (e) => {
+                const inputData = e.inputBuffer.getChannelData(0);
+                const int16 = new Int16Array(inputData.length);
+
+                for (let i = 0; i < inputData.length; i++) {
+                  const s = Math.max(-1, Math.min(1, inputData[i]));
+                  int16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+                }
+
+                const base64Data = encode(new Uint8Array(int16.buffer));
+
+                sessionPromise.then((session) => {
                   if (session) {
                     session.sendRealtimeInput({
                       media: {
                         data: base64Data,
-                        mimeType: 'audio/pcm;rate=16000'
-                      }
+                        mimeType: "audio/pcm;rate=16000",
+                      },
                     });
                   }
                 });
-              }
-            };
+              };
 
-            source.connect(workletNode);
-            workletNode.connect(inputCtx.destination);
-          } catch (workletError) {
-            // Fallback to deprecated ScriptProcessor for browsers without AudioWorklet support
-            console.warn('AudioWorklet not supported, falling back to ScriptProcessor:', workletError);
-            
-            const processor = inputCtx.createScriptProcessor(4096, 1, 1);
-            
-            processor.onaudioprocess = (e) => {
-              const inputData = e.inputBuffer.getChannelData(0);
-              const int16 = new Int16Array(inputData.length);
-              
-              for (let i = 0; i < inputData.length; i++) {
-                const s = Math.max(-1, Math.min(1, inputData[i]));
-                int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-              }
-              
-              const base64Data = encode(new Uint8Array(int16.buffer));
-              
-              sessionPromise.then(session => {
-                if (session) {
-                  session.sendRealtimeInput({
-                    media: {
-                      data: base64Data,
-                      mimeType: 'audio/pcm;rate=16000'
-                    }
-                  });
-                }
-              });
-            };
+              source.connect(processor);
+              processor.connect(inputCtx.destination);
+            }
 
-            source.connect(processor);
-            processor.connect(inputCtx.destination);
-          }
-
-          onSystemMessage?.("[VOICE_LINK_ESTABLISHED]: Listening for audio input...");
-        },
-
-        onMessage: async (message: any) => {
-          // Handle audio output
-          const audioBase64 = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
-          if (audioBase64 && outputAudioCtxRef.current && aiAnalyserRef.current) {
-            setIsAiTalking(true);
-            
-            const buffer = await decodeAudioData(
-              decode(audioBase64),
-              outputAudioCtxRef.current,
-              24000,
-              1
+            onSystemMessage?.(
+              "[VOICE_LINK_ESTABLISHED]: Listening for audio input..."
             );
-            
-            const audioSource = outputAudioCtxRef.current.createBufferSource();
-            audioSource.buffer = buffer;
-            audioSource.connect(aiAnalyserRef.current);
+          },
 
-            const now = outputAudioCtxRef.current.currentTime;
-            nextStartTimeRef.current = Math.max(nextStartTimeRef.current, now);
-            audioSource.start(nextStartTimeRef.current);
-            nextStartTimeRef.current += buffer.duration;
+          onMessage: async (message: any) => {
+            // Handle audio output
+            const audioBase64 =
+              message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+            if (
+              audioBase64 &&
+              outputAudioCtxRef.current &&
+              aiAnalyserRef.current
+            ) {
+              setIsAiTalking(true);
 
-            sourcesRef.current.add(audioSource);
-            audioSource.onended = () => {
-              sourcesRef.current.delete(audioSource);
-              if (sourcesRef.current.size === 0) {
-                setIsAiTalking(false);
-              }
-            };
-          }
+              const buffer = await decodeAudioData(
+                decode(audioBase64),
+                outputAudioCtxRef.current,
+                24000,
+                1
+              );
 
-          // Handle interruption
-          if (message.serverContent?.interrupted) {
-            sourcesRef.current.forEach(s => {
-              try { s.stop(); } catch (e) {}
-            });
-            sourcesRef.current.clear();
-            nextStartTimeRef.current = 0;
-            setIsAiTalking(false);
-          }
+              const audioSource =
+                outputAudioCtxRef.current.createBufferSource();
+              audioSource.buffer = buffer;
+              audioSource.connect(aiAnalyserRef.current);
 
-          // Handle transcripts
-          const inputTranscript = message.serverContent?.inputTranscription?.text;
-          const outputTranscript = message.serverContent?.outputTranscription?.text;
+              const now = outputAudioCtxRef.current.currentTime;
+              nextStartTimeRef.current = Math.max(
+                nextStartTimeRef.current,
+                now
+              );
+              audioSource.start(nextStartTimeRef.current);
+              nextStartTimeRef.current += buffer.duration;
 
-          if (inputTranscript) {
-            onInputTranscript?.(inputTranscript);
-          }
-
-          if (outputTranscript) {
-            onOutputTranscript?.(outputTranscript);
-          }
-
-          // Handle turn complete
-          if (message.serverContent?.turnComplete) {
-            onTurnComplete?.();
-          }
-
-          // Handle tool calls
-          if (message.toolCall) {
-            for (const fc of message.toolCall.functionCalls) {
-              if (fc.name === 'showProject') {
-                const project = PORTFOLIO_DATA.projects.find(
-                  p => p.id === fc.args.projectId
-                );
-                if (project) {
-                  onProjectShow?.(project);
+              sourcesRef.current.add(audioSource);
+              audioSource.onended = () => {
+                sourcesRef.current.delete(audioSource);
+                if (sourcesRef.current.size === 0) {
+                  setIsAiTalking(false);
                 }
-                sessionPromise.then(s =>
-                  s.sendToolResponse({
-                    functionResponses: {
-                      id: fc.id,
-                      name: fc.name,
-                      response: { result: "Project displayed successfully." }
-                    }
-                  })
-                );
-              } else if (fc.name === 'requestResumeEmail') {
-                // Trigger email modal
-                if (onResumeRequest) {
-                  onResumeRequest();
+              };
+            }
+
+            // Handle interruption
+            if (message.serverContent?.interrupted) {
+              sourcesRef.current.forEach((s) => {
+                try {
+                  s.stop();
+                } catch (e) {}
+              });
+              sourcesRef.current.clear();
+              nextStartTimeRef.current = 0;
+              setIsAiTalking(false);
+            }
+
+            // Handle transcripts
+            const inputTranscript =
+              message.serverContent?.inputTranscription?.text;
+            const outputTranscript =
+              message.serverContent?.outputTranscription?.text;
+
+            if (inputTranscript) {
+              onInputTranscript?.(inputTranscript);
+            }
+
+            if (outputTranscript) {
+              onOutputTranscript?.(outputTranscript);
+            }
+
+            // Handle turn complete
+            if (message.serverContent?.turnComplete) {
+              onTurnComplete?.();
+            }
+
+            // Handle tool calls
+            if (message.toolCall) {
+              for (const fc of message.toolCall.functionCalls) {
+                if (fc.name === "showProject") {
+                  const project = PORTFOLIO_DATA.projects.find(
+                    (p) => p.id === fc.args.projectId
+                  );
+                  if (project) {
+                    onProjectShow?.(project);
+                  }
+                  sessionPromise.then((s) =>
+                    s.sendToolResponse({
+                      functionResponses: {
+                        id: fc.id,
+                        name: fc.name,
+                        response: { result: "Project displayed successfully." },
+                      },
+                    })
+                  );
+                } else if (fc.name === "requestResumeEmail") {
+                  // Trigger email modal
+                  if (onResumeRequest) {
+                    onResumeRequest();
+                  }
+                  sessionPromise.then((s) =>
+                    s.sendToolResponse({
+                      functionResponses: {
+                        id: fc.id,
+                        name: fc.name,
+                        response: { result: "Email request initiated." },
+                      },
+                    })
+                  );
+                } else if (fc.name === "showGitHeatmap") {
+                  // Show git heatmap
+                  if (onShowGitHeatmap) {
+                    onShowGitHeatmap();
+                  }
+                  sessionPromise.then((s) =>
+                    s.sendToolResponse({
+                      functionResponses: {
+                        id: fc.id,
+                        name: fc.name,
+                        response: {
+                          result: "Git heatmap displayed successfully.",
+                        },
+                      },
+                    })
+                  );
                 }
-                sessionPromise.then(s =>
-                  s.sendToolResponse({
-                    functionResponses: {
-                      id: fc.id,
-                      name: fc.name,
-                      response: { result: "Email request initiated." }
-                    }
-                  })
-                );
               }
             }
-          }
-        },
+          },
 
-        onClose: () => stopVoiceChat(),
-        onError: (e: any) => {
-          console.error('Voice chat error:', e);
-          stopVoiceChat();
-        }
-      }, userContext);
+          onClose: () => stopVoiceChat(),
+          onError: (e: any) => {
+            console.error("Voice chat error:", e);
+            stopVoiceChat();
+          },
+        },
+        userContext
+      );
 
       sessionRef.current = sessionPromise;
       setIsVoiceEnabled(true);
     } catch (err: any) {
       console.error("Microphone access denied or error:", err);
       setIsVoiceEnabled(false);
-      
-      // Show user-friendly error message
-      const errorMessage = err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError'
-        ? "[ERROR]: Microphone access denied. Please allow microphone access and try again."
-        : err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError'
-        ? "[ERROR]: No microphone found. Please connect a microphone and try again."
-        : `[ERROR]: Failed to start voice chat: ${err.message || 'Unknown error'}`;
-      
+
+      // Show user-friendly error message with mobile-specific guidance
+      let errorMessage = "";
+
+      if (
+        err.name === "NotAllowedError" ||
+        err.name === "PermissionDeniedError"
+      ) {
+        errorMessage =
+          "[ERROR]: Microphone access denied. On mobile, please:\n1. Tap 'Allow' when prompted\n2. Check browser settings if permission was blocked\n3. Try refreshing the page";
+      } else if (
+        err.name === "NotFoundError" ||
+        err.name === "DevicesNotFoundError"
+      ) {
+        errorMessage =
+          "[ERROR]: No microphone found. Please connect a microphone and try again.";
+      } else if (err.name === "NotSupportedError") {
+        errorMessage =
+          "[ERROR]: Audio features not supported. Please use a modern browser (Chrome, Firefox, Safari).";
+      } else if (err.message?.includes("AudioContext")) {
+        errorMessage =
+          "[ERROR]: Audio not supported. On mobile, ensure you're using a supported browser and tap the button again.";
+      } else {
+        errorMessage = `[ERROR]: Failed to start voice chat: ${
+          err.message || "Unknown error"
+        }\n\nOn mobile devices, ensure:\n- You're using Chrome, Firefox, or Safari\n- Microphone permissions are granted\n- You tap the button directly (not through a keyboard shortcut)`;
+      }
+
       onSystemMessage?.(errorMessage);
     }
-  }, [userContext, onProjectShow, onInputTranscript, onOutputTranscript, onTurnComplete, onSystemMessage, stopVoiceChat]);
+  }, [
+    userContext,
+    onProjectShow,
+    onInputTranscript,
+    onOutputTranscript,
+    onTurnComplete,
+    onSystemMessage,
+    onResumeRequest,
+    onShowGitHeatmap,
+    stopVoiceChat,
+  ]);
 
   const toggleVoice = useCallback(() => {
-    console.log('toggleVoice called, isVoiceEnabled:', isVoiceEnabled);
+    console.log("toggleVoice called, isVoiceEnabled:", isVoiceEnabled);
     if (isVoiceEnabled) {
       stopVoiceChat();
     } else {
-      console.log('Starting voice chat...');
+      // Set state immediately for visual feedback, especially on mobile
+      setIsVoiceEnabled(true);
+      console.log("Starting voice chat...");
       startVoiceChat().catch((err) => {
-        console.error('Error in startVoiceChat:', err);
+        console.error("Error in startVoiceChat:", err);
+        // Reset state on error
+        setIsVoiceEnabled(false);
       });
     }
   }, [isVoiceEnabled, startVoiceChat, stopVoiceChat]);
@@ -400,8 +537,6 @@ export const useVoiceChat = (options: UseVoiceChatOptions): UseVoiceChatReturn =
     aiVolume,
     startVoiceChat,
     stopVoiceChat,
-    toggleVoice
+    toggleVoice,
   };
 };
-
-
