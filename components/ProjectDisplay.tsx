@@ -26,42 +26,41 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
     language === "tr" && project.impactTr ? project.impactTr : project.impact;
 
   return (
-    <div className="glass-terminal border border-[#00FF41] matrix-border-glow h-full flex flex-col mono relative overflow-hidden">
+    <div className="glass-terminal border border-[#00FF41] matrix-border-glow h-full w-full flex flex-col mono relative overflow-hidden">
       {/* Corner Brackets */}
       <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#00FF41] z-30" />
       <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[#00FF41] z-30" />
       <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[#00FF41] z-30" />
       <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[#00FF41] z-30" />
 
-      <div className="bg-[#00FF41] px-4 py-2 flex justify-between items-center">
-        <span className="text-[10px] font-bold text-[#0d0208] tracking-widest uppercase">
-          {" "}
-          {translate("project.dataPacket")}: {project.id}{" "}
+      <div className="bg-[#00FF41] px-3 sm:px-4 py-2 flex justify-between items-center gap-2">
+        <span className="text-[8px] sm:text-[10px] font-bold text-[#0d0208] tracking-widest uppercase truncate flex-shrink">
+          {translate("project.dataPacket")}: {project.id}
         </span>
         <button
           onClick={onClose}
-          className="text-[#0d0208] hover:text-white font-bold transition-colors text-sm"
+          className="text-[#0d0208] hover:text-white font-bold transition-colors text-xs sm:text-sm flex-shrink-0"
         >
           {translate("project.terminate")}
         </button>
       </div>
 
-      <div className="p-6 space-y-8 overflow-y-auto flex-1 custom-scrollbar">
+      <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 lg:space-y-8 overflow-y-auto flex-1 custom-scrollbar">
         <div className="relative group grayscale hover:grayscale-0 transition-all duration-1000 border border-[#003B00]">
           <div className="scanner-line"></div>
           <div className="absolute inset-0 bg-[#00FF41]/10 pointer-events-none group-hover:opacity-0 transition-opacity"></div>
           <img
             src={project.imageUrl}
             alt={title}
-            className="w-full h-56 object-cover border border-[#003B00]"
+            className="w-full h-40 sm:h-48 lg:h-56 object-cover border border-[#003B00]"
           />
           <div className="absolute bottom-2 right-2 text-[8px] bg-[#020202]/80 px-2 py-1 border border-[#003B00] text-[#008F11]">
             COORD: 37.7749N / 122.4194W
           </div>
         </div>
 
-        <div className="border-l-4 border-[#00FF41] pl-4">
-          <h2 className="text-2xl font-bold text-[#00FF41] tracking-tighter matrix-text-glow">
+        <div className="border-l-4 border-[#00FF41] pl-3 sm:pl-4">
+          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-[#00FF41] tracking-tighter matrix-text-glow">
             {title.toUpperCase()}
           </h2>
           <div className="flex items-center gap-2 mt-1">
@@ -133,12 +132,12 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
         </div>
       </div>
 
-      <div className="p-6 bg-[#020202] border-t border-[#003B00] flex gap-4">
+      <div className="p-3 sm:p-4 lg:p-6 bg-[#020202] border-t border-[#003B00] flex flex-col sm:flex-row gap-2 sm:gap-4">
         {project.githubUrl && (
           <a
             href={project.githubUrl}
             target="_blank"
-            className="flex-1 text-center py-3 border border-[#00FF41] text-[#00FF41] text-xs font-bold hover:bg-[#00FF41] hover:text-[#0d0208] transition-all shadow-[0_0_10px_rgba(0,255,65,0.2)]"
+            className="flex-1 text-center py-2.5 sm:py-3 border border-[#00FF41] text-[#00FF41] text-[10px] sm:text-xs font-bold hover:bg-[#00FF41] hover:text-[#0d0208] transition-all shadow-[0_0_10px_rgba(0,255,65,0.2)]"
           >
             {translate("project.downloadSrc")}
           </a>
@@ -148,7 +147,7 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
             href={project.demoUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 text-center py-3 bg-[#00FF41] text-[#0d0208] text-xs font-bold hover:bg-white hover:shadow-[0_0_20px_#00FF41] transition-all group relative overflow-hidden"
+            className="flex-1 text-center py-2.5 sm:py-3 bg-[#00FF41] text-[#0d0208] text-[10px] sm:text-xs font-bold hover:bg-white hover:shadow-[0_0_20px_#00FF41] transition-all group relative overflow-hidden"
           >
             <span className="relative z-10">
               {translate("project.initializeDemo")}
@@ -156,7 +155,7 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
             <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-500"></div>
           </a>
         ) : (
-          <button className="flex-1 py-3 bg-[#00FF41] text-[#0d0208] text-xs font-bold hover:bg-white hover:shadow-[0_0_20px_#00FF41] transition-all group relative overflow-hidden">
+          <button className="flex-1 py-2.5 sm:py-3 bg-[#00FF41] text-[#0d0208] text-[10px] sm:text-xs font-bold hover:bg-white hover:shadow-[0_0_20px_#00FF41] transition-all group relative overflow-hidden">
             <span className="relative z-10">
               {translate("project.initializeDemo")}
             </span>

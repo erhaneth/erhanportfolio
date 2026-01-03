@@ -7,7 +7,21 @@ import {
 } from "@google/genai";
 import { INITIAL_SYSTEM_PROMPT, PORTFOLIO_DATA } from "../constants";
 
-const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getAI = () => {
+  const apiKey = process.env.API_KEY;
+  // Check if API key is actually available (not undefined string)
+  if (!apiKey || apiKey === "undefined" || apiKey === "null") {
+    console.error("[Gemini Service] API_KEY is missing or invalid:", {
+      exists: !!apiKey,
+      type: typeof apiKey,
+      value: apiKey ? `${apiKey.substring(0, 10)}...` : "null",
+    });
+    throw new Error(
+      "API_KEY is not configured. Please set GEMINI_API_KEY environment variable."
+    );
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
 const showProjectTool: FunctionDeclaration = {
   name: "showProject",
@@ -44,38 +58,65 @@ const requestResumeEmailTool: FunctionDeclaration = {
   },
 };
 
+const showGitHeatmapTool: FunctionDeclaration = {
+  name: "showGitHeatmap",
+  parameters: {
+    type: Type.OBJECT,
+    description:
+      "Displays Erhan's Git contribution heatmap showing coding activity, languages used, and project distribution. Use this when users ask about coding activity, productivity, GitHub contributions, or want to see development statistics.",
+    properties: {},
+  },
+};
+
 export const generateResponse = async (
   messages: { role: "user" | "assistant"; content: string }[],
   userContext?: string
 ) => {
-  const ai = getAI();
-  const systemInstruction = userContext
-    ? `${INITIAL_SYSTEM_PROMPT}\n\nUSER CONTEXT (Recruiter info/Job Desc):\n${userContext}`
-    : INITIAL_SYSTEM_PROMPT;
+  // Check if API key is available
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "API_KEY is not configured. Please set GEMINI_API_KEY environment variable."
+    );
+  }
 
-  const contents = messages.map((m) => ({
-    role: m.role === "user" ? "user" : "model",
-    parts: [{ text: m.content }],
-  }));
+  try {
+    const ai = getAI();
+    const systemInstruction = userContext
+      ? `${INITIAL_SYSTEM_PROMPT}\n\nUSER CONTEXT (Recruiter info/Job Desc):\n${userContext}`
+      : INITIAL_SYSTEM_PROMPT;
 
-  const response: GenerateContentResponse = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: contents as any,
-    config: {
-      systemInstruction,
-      tools: [
-        {
-          functionDeclarations: [
-            showProjectTool,
-            unlockSecretProjectTool,
-            requestResumeEmailTool,
-          ],
-        },
-      ],
-    },
-  });
+    const contents = messages.map((m) => ({
+      role: m.role === "user" ? "user" : "model",
+      parts: [{ text: m.content }],
+    }));
 
-  return response;
+    const response: GenerateContentResponse = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: contents as any,
+      config: {
+        systemInstruction,
+        tools: [
+          {
+            functionDeclarations: [
+              showProjectTool,
+              unlockSecretProjectTool,
+              requestResumeEmailTool,
+              showGitHeatmapTool,
+            ],
+          },
+        ],
+      },
+    });
+
+    return response;
+  } catch (error: any) {
+    // Re-throw with more context
+    if (error?.message) {
+      throw new Error(`Gemini API error: ${error.message}`);
+    }
+    throw error;
+  }
 };
 
 // Generate AI pitch for Mission Briefing
@@ -102,7 +143,7 @@ ANALYSIS RESULTS:
 ERHAN'S BACKGROUND (from resume):
 - Full-stack engineer with 3 years of experience
 - React, Next.js, TypeScript, Python, Node.js
-- Built high-traffic web app for Museum of Life and Science (300k+ annual visitors)
+- Built high-traffic web apps for Museum of Life and Science (300k+ annual visitors)
 - Integrated OpenAI APIs for AI interview assistant with real-time feedback
 - Optimized performance: achieved 25% increase in page load speeds
 - Playwright/Jest testing, CI/CD, Heroku/Google Cloud/Vercel deployments
@@ -212,6 +253,7 @@ export const connectLive = async (
             showProjectTool,
             unlockSecretProjectTool,
             requestResumeEmailTool,
+            showGitHeatmapTool,
           ],
         },
       ],

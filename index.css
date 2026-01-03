@@ -1,0 +1,19 @@
+/* Mobile touch optimizations */
+* {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Ensure buttons are properly sized for touch on mobile */
+@media (max-width: 640px) {
+  button {
+    min-height: 44px; /* iOS recommended touch target size */
+  }
+}
