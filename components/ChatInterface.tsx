@@ -1,7 +1,8 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { Message } from "../types";
-import TypewriterText from "./TypewriterText";
+import TypewriterMarkdown from "./TypewriterMarkdown";
 import { useLanguage } from "../contexts/LanguageContext";
+import ReactMarkdown from "react-markdown";
 
 interface ChatInterfaceProps {
   messages: Message[];
@@ -64,20 +65,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full glass-terminal border border-[#003B00] shadow-[0_0_20px_rgba(0,59,0,0.5)]">
-      <div className="bg-[#003B00]/60 px-4 py-2 flex justify-between items-center border-b border-[#00FF41]">
-        <div className="flex items-center gap-4">
+    <div className="flex flex-col h-full min-h-0 glass-terminal border border-[#003B00] shadow-[0_0_20px_rgba(0,59,0,0.5)]">
+      <div className="bg-[#003B00]/60 px-2 sm:px-4 py-2 flex justify-between items-center border-b border-[#00FF41] flex-shrink-0">
+        <div className="flex items-center gap-2 sm:gap-4">
           <div className="flex gap-1">
-            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <div className="w-2 h-2 rounded-full bg-yellow-500" />
-            <div className="w-2 h-2 rounded-full bg-green-500" />
+            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500 animate-pulse" />
+            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-yellow-500" />
+            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500" />
           </div>
-          <span className="text-[10px] font-bold text-[#00FF41] tracking-[0.3em] uppercase matrix-text-glow">
-            {" "}
-            Zion_Term://COMMS_NODE_21{" "}
+          <span className="text-[8px] sm:text-[10px] font-bold text-[#00FF41] tracking-[0.2em] sm:tracking-[0.3em] uppercase matrix-text-glow truncate">
+            Zion_Term://COMMS_NODE_21
           </span>
         </div>
-        <div className="text-[9px] text-[#008F11] mono hidden sm:block">
+        <div className="text-[8px] sm:text-[9px] text-[#008F11] mono hidden sm:block">
           {translate("chat.status")}:{" "}
           <span className="text-[#00FF41] animate-pulse">
             {translate("chat.encrypted")}
@@ -87,7 +87,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-6 space-y-8 mono scroll-smooth"
+        className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 lg:space-y-8 mono scroll-smooth"
       >
         {messages.map((msg, index) => (
           <div key={msg.id} className="group flex flex-col space-y-2">
@@ -116,20 +116,62 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               }`}
             >
               <div
-                className={`max-w-[85%] px-4 py-3 text-sm leading-relaxed border-t border-b border-[#003B00] transition-all group-hover:border-[#00FF41]/40 ${
+                className={`max-w-[90%] sm:max-w-[85%] px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm leading-relaxed border-t border-b border-[#003B00] transition-all group-hover:border-[#00FF41]/40 markdown-content ${
                   msg.role === "user"
                     ? "text-[#00FF41] text-right bg-[#00FF41]/5"
                     : "text-[#00FF41] bg-[#003B00]/10"
                 }`}
               >
                 {shouldAnimate(msg, index) ? (
-                  <TypewriterText
+                  <TypewriterMarkdown
                     text={msg.content}
                     speed={msg.id === "welcome" ? 18 : 8}
                     onComplete={() => handleTypeComplete(msg.id)}
                   />
                 ) : (
-                  msg.content
+                  <ReactMarkdown
+                    components={{
+                      p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
+                      strong: ({ children }) => <strong className="font-bold text-[#00FF41]">{children}</strong>,
+                      em: ({ children }) => <em className="italic text-[#008F11]">{children}</em>,
+                      ul: ({ children }) => <ul className="list-disc list-inside mb-3 space-y-1 ml-4">{children}</ul>,
+                      ol: ({ children }) => <ol className="list-decimal list-inside mb-3 space-y-1 ml-4">{children}</ol>,
+                      li: ({ children }) => <li className="ml-2">{children}</li>,
+                      code: ({ children, className }) => {
+                        const isInline = !className;
+                        return isInline ? (
+                          <code className="bg-[#003B00]/50 px-1.5 py-0.5 rounded text-[#008F11] font-mono text-xs">
+                            {children}
+                          </code>
+                        ) : (
+                          <code className="block bg-[#003B00]/50 p-3 rounded text-[#008F11] font-mono text-xs overflow-x-auto mb-3">
+                            {children}
+                          </code>
+                        );
+                      },
+                      h1: ({ children }) => <h1 className="text-lg font-bold mb-2 mt-4 first:mt-0">{children}</h1>,
+                      h2: ({ children }) => <h2 className="text-base font-bold mb-2 mt-4 first:mt-0">{children}</h2>,
+                      h3: ({ children }) => <h3 className="text-sm font-bold mb-2 mt-3 first:mt-0">{children}</h3>,
+                      blockquote: ({ children }) => (
+                        <blockquote className="border-l-2 border-[#00FF41]/40 pl-4 my-3 italic text-[#008F11]">
+                          {children}
+                        </blockquote>
+                      ),
+                      hr: () => <hr className="my-4 border-[#003B00]" />,
+                      a: ({ children, href }) => (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#008F11] hover:text-[#00FF41] underline"
+                        >
+                          {children}
+                        </a>
+                      ),
+                    }}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
                 )}
               </div>
             </div>
@@ -147,11 +189,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
       <form
         onSubmit={handleSubmit}
-        className="p-4 bg-[#020202] border-t border-[#003B00] relative"
+        className="p-2 sm:p-4 bg-[#020202] border-t border-[#003B00] relative flex-shrink-0"
       >
         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#00FF41]/20 to-transparent"></div>
-        <div className="flex items-center gap-3 px-2">
-          <span className="text-[#00FF41] font-bold animate-pulse text-lg">
+        <div className="flex items-center gap-2 sm:gap-3 px-1 sm:px-2">
+          <span className="text-[#00FF41] font-bold animate-pulse text-base sm:text-lg">
             &gt;
           </span>
           <input
@@ -160,7 +202,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             onChange={(e) => setInput(e.target.value)}
             disabled={isLoading}
             placeholder={translate("chat.placeholder")}
-            className="flex-1 bg-transparent border-none py-2 text-sm text-[#00FF41] focus:outline-none placeholder:text-[#003B00] mono caret-[#00FF41]"
+            className="flex-1 bg-transparent border-none py-2 text-xs sm:text-sm text-[#00FF41] focus:outline-none placeholder:text-[#003B00] mono caret-[#00FF41]"
           />
           <button
             type="submit"

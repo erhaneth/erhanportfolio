@@ -37,7 +37,8 @@ interface UseMessagesReturn {
 export const useMessages = (
   userContext: string,
   onProjectShow?: (project: Project) => void,
-  onResumeRequest?: () => void
+  onResumeRequest?: () => void,
+  onShowGitHeatmap?: () => void
 ): UseMessagesReturn => {
   const { language } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([
@@ -115,6 +116,21 @@ export const useMessages = (
 
   const handleSendMessage = useCallback(
     async (text: string): Promise<Project | null> => {
+      // Check network connectivity first
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `offline-${Date.now()}`,
+            role: "system",
+            content:
+              "[ERROR]: You are currently offline. Please check your internet connection and try again.",
+            timestamp: Date.now(),
+          },
+        ]);
+        return null;
+      }
+
       const userMsg: Message = {
         id: Date.now().toString(),
         role: "user",
@@ -161,8 +177,17 @@ export const useMessages = (
           userContext
         );
 
+        // Extract text from response
         const responseText =
-          response.text || t("chat.signalInterrupted", language);
+          response.candidates?.[0]?.content?.parts?.[0]?.text ||
+          t("chat.signalInterrupted", language);
+
+        // Extract function calls from response
+        const parts = response.candidates?.[0]?.content?.parts || [];
+        const functionCalls = parts
+          .filter((part: any) => part.functionCall)
+          .map((part: any) => part.functionCall);
+
         const assistantMsg: Message = {
           id: `${Date.now() + 1}`,
           role: "assistant",
@@ -172,10 +197,11 @@ export const useMessages = (
 
         setMessages((prev) => [...prev, assistantMsg]);
 
-        if (response.functionCalls) {
-          for (const fc of response.functionCalls) {
+        if (functionCalls && functionCalls.length > 0) {
+          for (const fc of functionCalls) {
             if (fc.name === "showProject") {
-              const pId = (fc.args as any).projectId;
+              const pId =
+                (fc.args as any)?.projectId || (fc as any).args?.projectId;
               const project = PORTFOLIO_DATA.projects.find((p) => p.id === pId);
               if (project) {
                 projectToShow = project;
@@ -195,18 +221,75 @@ export const useMessages = (
               if (onResumeRequest) {
                 onResumeRequest();
               }
+            } else if (fc.name === "showGitHeatmap") {
+              // Show git heatmap
+              if (onShowGitHeatmap) {
+                onShowGitHeatmap();
+              }
             }
           }
         }
-      } catch (error) {
-        console.error(error);
+      } catch (error: any) {
+        console.error("Error in handleSendMessage:", error);
+
+        // Provide more specific error messages
+        let errorMessage =
+          "[INTERNAL_ERROR_0x99]: System instability. Connection lost.";
+
+        // Check if we're offline
+        if (typeof navigator !== "undefined" && !navigator.onLine) {
+          errorMessage =
+            "[ERROR]: You are currently offline. Please check your internet connection and try again.";
+        } else if (error?.message) {
+          if (
+            error.message.includes("API_KEY") ||
+            error.message.includes("apiKey") ||
+            error.message.includes("authentication") ||
+            error.message.includes("not configured")
+          ) {
+            errorMessage =
+              "[ERROR]: API authentication failed. Please check configuration.";
+          } else if (
+            error.message.includes("network") ||
+            error.message.includes("fetch") ||
+            error.message.includes("Failed to fetch") ||
+            error.message.includes("ERR_INTERNET_DISCONNECTED") ||
+            error.message.includes("ERR_NETWORK_CHANGED")
+          ) {
+            errorMessage =
+              "[ERROR]: Network connection failed. Please check your internet connection and try again.";
+          } else if (
+            error.message.includes("timeout") ||
+            error.message.includes("TIMEOUT")
+          ) {
+            errorMessage =
+              "[ERROR]: Request timeout. The server took too long to respond. Please try again.";
+          } else if (
+            error.message.includes("quota") ||
+            error.message.includes("rate limit")
+          ) {
+            errorMessage =
+              "[ERROR]: API rate limit exceeded. Please try again in a moment.";
+          } else {
+            errorMessage = `[ERROR]: ${
+              error.message || "Unknown error occurred. Please try again."
+            }`;
+          }
+        } else if (
+          error?.name === "NetworkError" ||
+          error?.name === "TypeError" ||
+          error?.name === "Failed to fetch"
+        ) {
+          errorMessage =
+            "[ERROR]: Network connection failed. Please check your internet connection and try again.";
+        }
+
         setMessages((prev) => [
           ...prev,
           {
-            id: "err",
+            id: `err-${Date.now()}`,
             role: "system",
-            content:
-              "[INTERNAL_ERROR_0x99]: System instability. Connection lost.",
+            content: errorMessage,
             timestamp: Date.now(),
           },
         ]);
@@ -216,7 +299,14 @@ export const useMessages = (
 
       return projectToShow;
     },
-    [messages, userContext, riddleActive, onProjectShow, onResumeRequest]
+    [
+      messages,
+      userContext,
+      riddleActive,
+      onProjectShow,
+      onResumeRequest,
+      onShowGitHeatmap,
+    ]
   );
 
   return {
