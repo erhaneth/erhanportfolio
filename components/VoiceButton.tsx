@@ -1,189 +1,310 @@
-import React, { useEffect, useState } from 'react';
-import { useLanguage } from '../contexts/LanguageContext';
+import React, { useEffect, useState, useRef } from "react";
+
+// Voice states
+type VoiceState =
+  | "inactive"
+  | "connecting"
+  | "waiting"
+  | "listening"
+  | "ai-speaking";
 
 interface VoiceButtonProps {
   isActive: boolean;
+  isConnecting?: boolean;
   onClick: () => void;
-  userVolume?: number;  // 0-1
-  aiVolume?: number;    // 0-1
+  onStop?: () => void;
+  userVolume?: number;
+  aiVolume?: number;
   isAiTalking?: boolean;
 }
 
-const VoiceButton: React.FC<VoiceButtonProps> = ({ 
-  isActive, 
-  onClick, 
-  userVolume = 0, 
+const VoiceButton: React.FC<VoiceButtonProps> = ({
+  isActive,
+  isConnecting = false,
+  onClick,
+  onStop,
+  userVolume = 0,
   aiVolume = 0,
-  isAiTalking = false 
+  isAiTalking = false,
 }) => {
-  const { translate } = useLanguage();
-  const [bars, setBars] = useState([4, 8, 12, 8, 4]);
+  const [bars, setBars] = useState<number[]>(
+    Array(12)
+      .fill(0)
+      .map((_, i) => 4 + Math.sin(i * 0.5) * 4)
+  );
+  const [connectionProgress, setConnectionProgress] = useState(0);
+  const connectionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null
+  );
 
   // Determine current state
-  const isUserSpeaking = isActive && userVolume > 0.05 && !isAiTalking;
-  const isAiSpeaking = isActive && isAiTalking && aiVolume > 0.02;
-  const currentVolume = isAiSpeaking ? aiVolume : userVolume;
+  const getVoiceState = (): VoiceState => {
+    if (!isActive && !isConnecting) return "inactive";
+    if (isConnecting) return "connecting";
+    if (isAiTalking && aiVolume > 0.02) return "ai-speaking";
+    if (userVolume > 0.05) return "listening";
+    return "waiting";
+  };
 
-  // Update bars based on audio
+  const voiceState = getVoiceState();
+  const isExpanded = voiceState !== "inactive";
+
+  // Connection progress animation
   useEffect(() => {
-    if (!isActive) {
-      setBars([4, 8, 12, 8, 4]); // Static waveform icon
+    if (voiceState === "connecting") {
+      setConnectionProgress(0);
+      connectionIntervalRef.current = setInterval(() => {
+        setConnectionProgress((prev) => {
+          if (prev >= 100) {
+            if (connectionIntervalRef.current)
+              clearInterval(connectionIntervalRef.current);
+            return 100;
+          }
+          return prev + Math.random() * 15 + 5;
+        });
+      }, 100);
+    } else {
+      if (connectionIntervalRef.current) {
+        clearInterval(connectionIntervalRef.current);
+        connectionIntervalRef.current = null;
+      }
+      setConnectionProgress(0);
+    }
+    return () => {
+      if (connectionIntervalRef.current)
+        clearInterval(connectionIntervalRef.current);
+    };
+  }, [voiceState]);
+
+  // Update bars based on audio state
+  useEffect(() => {
+    if (voiceState === "inactive") {
+      setBars(
+        Array(12)
+          .fill(0)
+          .map((_, i) => {
+            const center = 5.5;
+            const distance = Math.abs(i - center);
+            return 4 + Math.cos(distance * 0.4) * 8;
+          })
+      );
       return;
     }
 
     const interval = setInterval(() => {
-      if (isAiSpeaking) {
-        // AI speaking - more dramatic, centered peaks
-        const intensity = Math.max(0.3, aiVolume * 1.5);
-        setBars([
-          4 + Math.random() * 12 * intensity,
-          8 + Math.random() * 16 * intensity,
-          12 + Math.random() * 20 * intensity,
-          8 + Math.random() * 16 * intensity,
-          4 + Math.random() * 12 * intensity,
-        ]);
-      } else if (isUserSpeaking) {
-        // User speaking - responsive to their volume
-        const intensity = Math.max(0.2, userVolume);
-        setBars([
-          4 + Math.random() * 14 * intensity,
-          6 + Math.random() * 18 * intensity,
-          8 + Math.random() * 22 * intensity,
-          6 + Math.random() * 18 * intensity,
-          4 + Math.random() * 14 * intensity,
-        ]);
-      } else {
-        // Idle listening - subtle pulse
-        setBars([
-          3 + Math.random() * 3,
-          5 + Math.random() * 4,
-          7 + Math.random() * 5,
-          5 + Math.random() * 4,
-          3 + Math.random() * 3,
-        ]);
-      }
+      const newBars = Array(12)
+        .fill(0)
+        .map((_, i) => {
+          const center = 5.5;
+          const distance = Math.abs(i - center);
+          const phase = Date.now() * 0.01 + i * 0.5;
+
+          switch (voiceState) {
+            case "connecting":
+              return (
+                4 +
+                Math.sin(phase - distance * 0.3) *
+                  6 *
+                  (connectionProgress / 100)
+              );
+
+            case "waiting":
+              return 4 + Math.sin(phase * 0.5) * 4 * (1 - distance * 0.08);
+
+            case "listening":
+              const userIntensity = Math.max(
+                0.3,
+                Math.min(userVolume * 2, 1.5)
+              );
+              return (
+                4 + Math.random() * 20 * userIntensity * (1 - distance * 0.03)
+              );
+
+            case "ai-speaking":
+              const aiIntensity = Math.max(0.4, Math.min(aiVolume * 2.5, 1.8));
+              return (
+                4 +
+                Math.sin(phase * 2 + i * 0.8) * 12 * aiIntensity +
+                Math.random() * 10 * aiIntensity
+              );
+
+            default:
+              return 8;
+          }
+        });
+      setBars(newBars);
     }, 50);
 
     return () => clearInterval(interval);
-  }, [isActive, isUserSpeaking, isAiSpeaking, userVolume, aiVolume]);
+  }, [voiceState, userVolume, aiVolume, connectionProgress]);
 
-  // Determine button state for styling
-  const getStateStyles = () => {
-    if (!isActive) {
-      return {
-        bg: 'bg-transparent',
-        text: 'text-[#00FF41]',
-        border: 'border-[#003B00] hover:border-[#00FF41]',
-        barColor: 'bg-[#00FF41]',
-        glow: 'hover:shadow-[0_0_15px_rgba(0,255,65,0.3)]'
-      };
-    }
-    if (isAiSpeaking) {
-      return {
-        bg: 'bg-[#00FF41]',
-        text: 'text-[#0d0208]',
-        border: 'border-[#00FF41]',
-        barColor: 'bg-[#0d0208]',
-        glow: 'shadow-[0_0_30px_rgba(0,255,65,0.7)]'
-      };
-    }
-    if (isUserSpeaking) {
-      return {
-        bg: 'bg-[#003B00]',
-        text: 'text-[#00FF41]',
-        border: 'border-[#00FF41]',
-        barColor: 'bg-[#00FF41]',
-        glow: 'shadow-[0_0_20px_rgba(0,255,65,0.5)]'
-      };
-    }
-    // Active but idle
-    return {
-      bg: 'bg-[#0d0208]',
-      text: 'text-[#00FF41]',
-      border: 'border-[#00FF41]',
-      barColor: 'bg-[#00FF41]',
-      glow: 'shadow-[0_0_15px_rgba(0,255,65,0.4)]'
-    };
-  };
-
-  const styles = getStateStyles();
-
-  // Get label based on state
+  // Get state label
   const getLabel = () => {
-    if (!isActive) return translate('voice.speak');
-    if (isAiSpeaking) return translate('voice.processing');
-    if (isUserSpeaking) return translate('voice.listening');
-    return translate('voice.speak');
+    switch (voiceState) {
+      case "inactive":
+        return "SPEAK";
+      case "connecting":
+        return "CONNECTING...";
+      case "waiting":
+        return "LISTENING...";
+      case "listening":
+        return "LISTENING...";
+      case "ai-speaking":
+        return "AI RESPONDING";
+    }
   };
 
+  // Get dynamic glow based on volume
+  const getGlowIntensity = () => {
+    if (!isExpanded) return 0;
+    if (voiceState === "ai-speaking") return 0.5 + aiVolume * 0.5;
+    if (voiceState === "listening") return 0.4 + userVolume * 0.6;
+    return 0.3;
+  };
+
+  const isAiMode = voiceState === "ai-speaking";
+  const barColor = isAiMode ? "#0d0208" : "#00FF41";
+  const glowIntensity = getGlowIntensity();
+
+  // Inactive state - compact button
+  if (!isExpanded) {
+    return (
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onClick();
+        }}
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          onClick();
+        }}
+        className="relative flex items-center gap-2 px-3 py-2 border border-[#003B00] hover:border-[#00FF41] 
+                   text-[#00FF41] font-bold transition-all duration-200 touch-manipulation
+                   hover:shadow-[0_0_15px_rgba(0,255,65,0.3)]"
+        style={{ WebkitTapHighlightColor: "transparent" }}
+        type="button"
+      >
+        {/* Mini waveform */}
+        <div className="flex items-center gap-[2px] h-4">
+          {bars.slice(4, 8).map((height, i) => (
+            <div
+              key={i}
+              className="w-[3px] rounded-full bg-[#00FF41] opacity-70"
+              style={{ height: `${Math.min(Math.max(height * 0.6, 3), 16)}px` }}
+            />
+          ))}
+        </div>
+        <span className="text-[10px] tracking-wider uppercase">SPEAK</span>
+      </button>
+    );
+  }
+
+  // Active state - full width inline
   return (
     <button
       onClick={(e) => {
-        // Ensure click event is properly handled for mobile
         e.preventDefault();
         e.stopPropagation();
-        // Call onClick immediately to provide visual feedback
         onClick();
       }}
       onTouchEnd={(e) => {
-        // Handle touch events for mobile - use onTouchEnd to ensure click fires
         e.preventDefault();
         onClick();
       }}
       className={`
-        relative w-full py-3 sm:py-4 px-3 sm:px-4 border-2 font-bold transition-all duration-200
-        flex items-center justify-center gap-2 sm:gap-4 group overflow-hidden
-        touch-manipulation active:scale-95
-        ${styles.bg} ${styles.text} ${styles.border} ${styles.glow}
+        relative flex-1 flex items-center gap-3 px-3 py-2 border-2 font-bold
+        transition-all duration-300 ease-out touch-manipulation
+        ${
+          isAiMode
+            ? "bg-[#00FF41] text-[#0d0208] border-[#00FF41]"
+            : "bg-[#003B00]/40 text-[#00FF41] border-[#00FF41]"
+        }
       `}
-      style={{ WebkitTapHighlightColor: 'transparent' }}
+      style={{
+        WebkitTapHighlightColor: "transparent",
+        boxShadow:
+          glowIntensity > 0
+            ? `0 0 ${25 * glowIntensity}px rgba(0, 255, 65, ${glowIntensity})`
+            : "none",
+      }}
       type="button"
     >
-      {/* Scanning line effect when inactive */}
-      {!isActive && (
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute w-full h-[1px] bg-gradient-to-r from-transparent via-[#00FF41]/50 to-transparent animate-scan" />
-        </div>
-      )}
+      {/* LIVE indicator */}
+      <div
+        className={`flex items-center gap-1.5 px-2 py-0.5 text-[9px] font-bold ${
+          isAiMode
+            ? "bg-[#0d0208] text-[#00FF41]"
+            : "bg-[#0d0208] text-[#00FF41] border border-[#00FF41]"
+        }`}
+      >
+        <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+        LIVE
+      </div>
 
-      {/* Pulse effect when AI is speaking */}
-      {isAiSpeaking && (
-        <div className="absolute inset-0 bg-[#00FF41] animate-pulse opacity-20" />
-      )}
-
-      {/* Waveform Visualizer */}
-      <div className="relative flex items-center gap-[3px] h-6">
+      {/* Waveform */}
+      <div className="flex items-center gap-[2px] h-6 flex-shrink-0">
         {bars.map((height, i) => (
           <div
             key={i}
-            className={`w-[4px] rounded-full transition-all duration-75 ${styles.barColor}`}
-            style={{ 
-              height: `${Math.min(height, 28)}px`,
-              opacity: isActive ? 1 : 0.7
+            className="w-[3px] rounded-full transition-all duration-75"
+            style={{
+              height: `${Math.min(Math.max(height, 3), 24)}px`,
+              backgroundColor: barColor,
             }}
           />
         ))}
       </div>
 
-      {/* Label */}
-      <span className="relative text-sm tracking-widest uppercase font-bold min-w-[100px]">
+      {/* State label */}
+      <span className="flex-1 text-xs tracking-widest uppercase font-bold text-left">
         {getLabel()}
       </span>
 
-      {/* Status indicator dot */}
-      {isActive && (
-        <div className={`
-          absolute top-2 right-2 w-2 h-2 rounded-full
-          ${isAiSpeaking ? 'bg-[#0d0208]' : 'bg-[#00FF41]'}
-          ${(isUserSpeaking || isAiSpeaking) ? 'animate-pulse' : ''}
-        `} />
+      {/* Close button */}
+      {onStop && (
+        <div
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onStop();
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onStop();
+          }}
+          className={`flex items-center justify-center w-7 h-7 border transition-all hover:scale-110 cursor-pointer ${
+            isAiMode
+              ? "border-[#0d0208] text-[#0d0208] hover:bg-[#0d0208] hover:text-[#00FF41]"
+              : "border-[#00FF41] text-[#00FF41] hover:bg-[#00FF41] hover:text-[#0d0208]"
+          }`}
+        >
+          <svg
+            className="w-3.5 h-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2.5}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </div>
       )}
 
-      {/* Corner accents */}
-      <div className={`absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 transition-colors ${isActive ? 'border-[#00FF41]' : 'border-[#00FF41]/50'}`} />
-      <div className={`absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 transition-colors ${isActive ? 'border-[#00FF41]' : 'border-[#00FF41]/50'}`} />
-      <div className={`absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 transition-colors ${isActive ? 'border-[#00FF41]' : 'border-[#00FF41]/50'}`} />
-      <div className={`absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 transition-colors ${isActive ? 'border-[#00FF41]' : 'border-[#00FF41]/50'}`} />
+      {/* Connection progress bar */}
+      {voiceState === "connecting" && (
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#003B00]">
+          <div
+            className="h-full bg-[#00FF41] transition-all duration-100"
+            style={{ width: `${Math.min(connectionProgress, 100)}%` }}
+          />
+        </div>
+      )}
     </button>
   );
 };

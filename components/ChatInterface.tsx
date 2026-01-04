@@ -3,17 +3,33 @@ import { Message } from "../types";
 import TypewriterMarkdown from "./TypewriterMarkdown";
 import { useLanguage } from "../contexts/LanguageContext";
 import ReactMarkdown from "react-markdown";
+import VoiceButton from "./VoiceButton";
 
 interface ChatInterfaceProps {
   messages: Message[];
   isLoading: boolean;
   onSendMessage: (text: string) => void;
+  // Voice props
+  isVoiceEnabled?: boolean;
+  isVoiceConnecting?: boolean;
+  onVoiceToggle?: () => void;
+  onVoiceStop?: () => void;
+  userVolume?: number;
+  aiVolume?: number;
+  isAiTalking?: boolean;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
   messages,
   isLoading,
   onSendMessage,
+  isVoiceEnabled = false,
+  isVoiceConnecting = false,
+  onVoiceToggle,
+  onVoiceStop,
+  userVolume = 0,
+  aiVolume = 0,
+  isAiTalking = false,
 }) => {
   const { translate } = useLanguage();
   const [input, setInput] = React.useState("");
@@ -131,12 +147,30 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 ) : (
                   <ReactMarkdown
                     components={{
-                      p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
-                      strong: ({ children }) => <strong className="font-bold text-[#00FF41]">{children}</strong>,
-                      em: ({ children }) => <em className="italic text-[#008F11]">{children}</em>,
-                      ul: ({ children }) => <ul className="list-disc list-inside mb-3 space-y-1 ml-4">{children}</ul>,
-                      ol: ({ children }) => <ol className="list-decimal list-inside mb-3 space-y-1 ml-4">{children}</ol>,
-                      li: ({ children }) => <li className="ml-2">{children}</li>,
+                      p: ({ children }) => (
+                        <p className="mb-3 last:mb-0">{children}</p>
+                      ),
+                      strong: ({ children }) => (
+                        <strong className="font-bold text-[#00FF41]">
+                          {children}
+                        </strong>
+                      ),
+                      em: ({ children }) => (
+                        <em className="italic text-[#008F11]">{children}</em>
+                      ),
+                      ul: ({ children }) => (
+                        <ul className="list-disc list-inside mb-3 space-y-1 ml-4">
+                          {children}
+                        </ul>
+                      ),
+                      ol: ({ children }) => (
+                        <ol className="list-decimal list-inside mb-3 space-y-1 ml-4">
+                          {children}
+                        </ol>
+                      ),
+                      li: ({ children }) => (
+                        <li className="ml-2">{children}</li>
+                      ),
                       code: ({ children, className }) => {
                         const isInline = !className;
                         return isInline ? (
@@ -149,9 +183,21 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                           </code>
                         );
                       },
-                      h1: ({ children }) => <h1 className="text-lg font-bold mb-2 mt-4 first:mt-0">{children}</h1>,
-                      h2: ({ children }) => <h2 className="text-base font-bold mb-2 mt-4 first:mt-0">{children}</h2>,
-                      h3: ({ children }) => <h3 className="text-sm font-bold mb-2 mt-3 first:mt-0">{children}</h3>,
+                      h1: ({ children }) => (
+                        <h1 className="text-lg font-bold mb-2 mt-4 first:mt-0">
+                          {children}
+                        </h1>
+                      ),
+                      h2: ({ children }) => (
+                        <h2 className="text-base font-bold mb-2 mt-4 first:mt-0">
+                          {children}
+                        </h2>
+                      ),
+                      h3: ({ children }) => (
+                        <h3 className="text-sm font-bold mb-2 mt-3 first:mt-0">
+                          {children}
+                        </h3>
+                      ),
                       blockquote: ({ children }) => (
                         <blockquote className="border-l-2 border-[#00FF41]/40 pl-4 my-3 italic text-[#008F11]">
                           {children}
@@ -192,37 +238,68 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         className="p-2 sm:p-4 bg-[#020202] border-t border-[#003B00] relative flex-shrink-0"
       >
         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#00FF41]/20 to-transparent"></div>
+
         <div className="flex items-center gap-2 sm:gap-3 px-1 sm:px-2">
-          <span className="text-[#00FF41] font-bold animate-pulse text-base sm:text-lg">
-            &gt;
-          </span>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            disabled={isLoading}
-            placeholder={translate("chat.placeholder")}
-            className="flex-1 bg-transparent border-none py-2 text-xs sm:text-sm text-[#00FF41] focus:outline-none placeholder:text-[#003B00] mono caret-[#00FF41]"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim() || isLoading}
-            className="group p-2 text-[#008F11] hover:text-[#00FF41] transition-all disabled:opacity-0"
-          >
-            <svg
-              className="w-6 h-6 transition-transform group-hover:translate-x-1"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M14 5l7 7-7 7"
+          {/* Normal input mode */}
+          {!isVoiceEnabled && !isVoiceConnecting ? (
+            <>
+              <span className="text-[#00FF41] font-bold animate-pulse text-base sm:text-lg">
+                &gt;
+              </span>
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                disabled={isLoading}
+                placeholder={translate("chat.placeholder")}
+                className="flex-1 bg-transparent border-none py-2 text-xs sm:text-sm text-[#00FF41] focus:outline-none placeholder:text-[#003B00] mono caret-[#00FF41]"
               />
-            </svg>
-          </button>
+
+              {/* Voice button */}
+              {onVoiceToggle && (
+                <VoiceButton
+                  isActive={false}
+                  isConnecting={false}
+                  onClick={onVoiceToggle}
+                  userVolume={userVolume}
+                  aiVolume={aiVolume}
+                  isAiTalking={isAiTalking}
+                />
+              )}
+
+              {/* Send button */}
+              <button
+                type="submit"
+                disabled={!input.trim() || isLoading}
+                className="group p-2 text-[#008F11] hover:text-[#00FF41] transition-all disabled:opacity-0"
+              >
+                <svg
+                  className="w-6 h-6 transition-transform group-hover:translate-x-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M14 5l7 7-7 7"
+                  />
+                </svg>
+              </button>
+            </>
+          ) : (
+            /* Voice mode - replaces entire input row */
+            <VoiceButton
+              isActive={isVoiceEnabled}
+              isConnecting={isVoiceConnecting}
+              onClick={onVoiceToggle!}
+              onStop={onVoiceStop}
+              userVolume={userVolume}
+              aiVolume={aiVolume}
+              isAiTalking={isAiTalking}
+            />
+          )}
         </div>
       </form>
     </div>

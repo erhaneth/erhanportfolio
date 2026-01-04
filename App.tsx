@@ -4,7 +4,6 @@ import { PORTFOLIO_DATA } from "./constants";
 import ChatInterface from "./components/ChatInterface";
 import ProjectDisplay from "./components/ProjectDisplay";
 import MatrixRain from "./components/MatrixRain";
-import VoiceButton from "./components/VoiceButton";
 import EmailModal from "./components/EmailModal";
 import LanguageActivation from "./components/LanguageActivation";
 import MissionBriefing from "./components/MissionBriefing";
@@ -133,30 +132,37 @@ const App: React.FC = () => {
   );
 
   // Voice chat hook
-  const { isVoiceEnabled, isAiTalking, userVolume, aiVolume, toggleVoice } =
-    useVoiceChat({
-      userContext,
-      onProjectShow: handleProjectShow,
-      onInputTranscript: useCallback(
-        (text: string) => {
-          console.log("[App] onInputTranscript called with text:", text);
-          console.log("[App] Calling detectAndSetLanguage for voice input...");
-          detectAndSetLanguage(text);
-          updateTransientMessage("user", text);
-        },
-        [updateTransientMessage, detectAndSetLanguage]
-      ),
-      onOutputTranscript: useCallback(
-        (text: string) => {
-          updateTransientMessage("assistant", text);
-        },
-        [updateTransientMessage]
-      ),
-      onTurnComplete: finalizeTransientMessages,
-      onSystemMessage: addSystemMessage,
-      onResumeRequest: () => setShowEmailModal(true),
-      onShowGitHeatmap: () => setShowGitHeatmap(true),
-    });
+  const {
+    isVoiceEnabled,
+    isConnecting,
+    isAiTalking,
+    userVolume,
+    aiVolume,
+    toggleVoice,
+    stopVoiceChat,
+  } = useVoiceChat({
+    userContext,
+    onProjectShow: handleProjectShow,
+    onInputTranscript: useCallback(
+      (text: string) => {
+        console.log("[App] onInputTranscript called with text:", text);
+        console.log("[App] Calling detectAndSetLanguage for voice input...");
+        detectAndSetLanguage(text);
+        updateTransientMessage("user", text);
+      },
+      [updateTransientMessage, detectAndSetLanguage]
+    ),
+    onOutputTranscript: useCallback(
+      (text: string) => {
+        updateTransientMessage("assistant", text);
+      },
+      [updateTransientMessage]
+    ),
+    onTurnComplete: finalizeTransientMessages,
+    onSystemMessage: addSystemMessage,
+    onResumeRequest: () => setShowEmailModal(true),
+    onShowGitHeatmap: () => setShowGitHeatmap(true),
+  });
 
   // Handle text message submission
   const onSendMessage = useCallback(
@@ -288,15 +294,6 @@ const App: React.FC = () => {
           </div>
 
           <div className="space-y-4 pt-2">
-            {/* Main Voice Button */}
-            <VoiceButton
-              isActive={isVoiceEnabled}
-              onClick={toggleVoice}
-              userVolume={userVolume}
-              aiVolume={aiVolume}
-              isAiTalking={isAiTalking}
-            />
-
             {/* Context Toggle Button */}
             <button
               onClick={() => setShowContextPanel(!showContextPanel)}
@@ -385,7 +382,7 @@ const App: React.FC = () => {
         )}
 
         {/* Network Activity */}
-        <div className="glass-terminal border border-[#003B00] p-3 sm:p-4 flex-1 min-h-[100px] sm:min-h-[120px] overflow-hidden flex flex-col hidden sm:flex">
+        <div className="glass-terminal border border-[#003B00] p-3 sm:p-4 flex-1 min-h-[100px] sm:min-h-[120px] overflow-hidden flex flex-col hidden lg:flex">
           <p className="text-[10px] text-[#008F11] uppercase font-bold mb-2 flex-shrink-0">
             {translate("context.networkActivity")}
           </p>
@@ -411,6 +408,13 @@ const App: React.FC = () => {
             messages={messages}
             isLoading={isLoading && !isVoiceEnabled}
             onSendMessage={onSendMessage}
+            isVoiceEnabled={isVoiceEnabled}
+            isVoiceConnecting={isConnecting}
+            onVoiceToggle={toggleVoice}
+            onVoiceStop={stopVoiceChat}
+            userVolume={userVolume}
+            aiVolume={aiVolume}
+            isAiTalking={isAiTalking}
           />
         </section>
 
