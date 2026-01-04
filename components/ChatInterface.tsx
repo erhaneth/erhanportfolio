@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { Message } from "../types";
 import TypewriterMarkdown from "./TypewriterMarkdown";
+import ConversationDivider from "./ConversationDivider";
 import { useLanguage } from "../contexts/LanguageContext";
 import ReactMarkdown from "react-markdown";
 import VoiceButton from "./VoiceButton";
@@ -17,6 +18,8 @@ interface ChatInterfaceProps {
   userVolume?: number;
   aiVolume?: number;
   isAiTalking?: boolean;
+  // Live mode
+  isLiveMode?: boolean;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
@@ -30,6 +33,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   userVolume = 0,
   aiVolume = 0,
   isAiTalking = false,
+  isLiveMode = false,
 }) => {
   const { translate } = useLanguage();
   const [input, setInput] = React.useState("");
@@ -85,19 +89,29 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       <div className="bg-[#003B00]/60 px-2 sm:px-4 py-2 flex justify-between items-center border-b border-[#00FF41] flex-shrink-0">
         <div className="flex items-center gap-2 sm:gap-4">
           <div className="flex gap-1">
-            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500 animate-pulse" />
+            <div
+              className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
+                isLiveMode ? "bg-green-500" : "bg-red-500"
+              } animate-pulse`}
+            />
             <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-yellow-500" />
             <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500" />
           </div>
           <span className="text-[8px] sm:text-[10px] font-bold text-[#00FF41] tracking-[0.2em] sm:tracking-[0.3em] uppercase matrix-text-glow truncate">
-            Zion_Term://COMMS_NODE_21
+            {isLiveMode ? "👨‍💻 Live with Erhan" : "Zion_Term://COMMS_NODE_21"}
           </span>
         </div>
         <div className="text-[8px] sm:text-[9px] text-[#008F11] mono hidden sm:block">
-          {translate("chat.status")}:{" "}
-          <span className="text-[#00FF41] animate-pulse">
-            {translate("chat.encrypted")}
-          </span>
+          {isLiveMode ? (
+            <span className="text-[#00FF41] animate-pulse">● LIVE</span>
+          ) : (
+            <>
+              {translate("chat.status")}:{" "}
+              <span className="text-[#00FF41] animate-pulse">
+                {translate("chat.encrypted")}
+              </span>
+            </>
+          )}
         </div>
       </div>
 
@@ -105,129 +119,169 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         ref={scrollRef}
         className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 lg:space-y-8 mono scroll-smooth"
       >
-        {messages.map((msg, index) => (
-          <div key={msg.id} className="group flex flex-col space-y-2">
-            <div
-              className={`flex items-center gap-2 text-[10px] font-bold ${
-                msg.role === "user"
-                  ? "justify-end text-[#008F11]"
-                  : "justify-start text-[#00FF41]"
-              }`}
-            >
-              {msg.role === "user" ? (
-                <>
-                  <span>{translate("chat.remoteUser")}</span>
-                  <div className="w-1.5 h-1.5 bg-[#008F11]" />
-                </>
-              ) : (
-                <>
-                  <div className="w-1.5 h-1.5 bg-[#00FF41] shadow-[0_0_5px_#00FF41]" />
-                  <span>{translate("chat.systemArchive")}</span>
-                </>
-              )}
-            </div>
-            <div
-              className={`flex ${
-                msg.role === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
+        {messages.map((msg, index) => {
+          // Check if this is a divider message
+          if (msg.metadata?.isDivider) {
+            return (
+              <ConversationDivider
+                key={msg.id}
+                type={
+                  msg.metadata.dividerType as
+                    | "operator_joined"
+                    | "operator_left"
+                    | "system"
+                }
+                message={
+                  msg.content !== "OPERATOR_JOINED" ? msg.content : undefined
+                }
+              />
+            );
+          }
+
+          return (
+            <div key={msg.id} className="group flex flex-col space-y-2">
               <div
-                className={`max-w-[90%] sm:max-w-[85%] px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm leading-relaxed border-t border-b border-[#003B00] transition-all group-hover:border-[#00FF41]/40 markdown-content ${
+                className={`flex items-center gap-2 text-[10px] font-bold ${
                   msg.role === "user"
-                    ? "text-[#00FF41] text-right bg-[#00FF41]/5"
-                    : "text-[#00FF41] bg-[#003B00]/10"
+                    ? "justify-end text-[#008F11]"
+                    : "justify-start text-[#00FF41]"
                 }`}
               >
-                {shouldAnimate(msg, index) ? (
-                  <TypewriterMarkdown
-                    text={msg.content}
-                    speed={msg.id === "welcome" ? 18 : 8}
-                    onComplete={() => handleTypeComplete(msg.id)}
-                  />
+                {msg.role === "user" ? (
+                  <>
+                    <span>{translate("chat.remoteUser")}</span>
+                    <div className="w-1.5 h-1.5 bg-[#008F11]" />
+                  </>
                 ) : (
-                  <ReactMarkdown
-                    components={{
-                      p: ({ children }) => (
-                        <p className="mb-3 last:mb-0">{children}</p>
-                      ),
-                      strong: ({ children }) => (
-                        <strong className="font-bold text-[#00FF41]">
-                          {children}
-                        </strong>
-                      ),
-                      em: ({ children }) => (
-                        <em className="italic text-[#008F11]">{children}</em>
-                      ),
-                      ul: ({ children }) => (
-                        <ul className="list-disc list-inside mb-3 space-y-1 ml-4">
-                          {children}
-                        </ul>
-                      ),
-                      ol: ({ children }) => (
-                        <ol className="list-decimal list-inside mb-3 space-y-1 ml-4">
-                          {children}
-                        </ol>
-                      ),
-                      li: ({ children }) => (
-                        <li className="ml-2">{children}</li>
-                      ),
-                      code: ({ children, className }) => {
-                        const isInline = !className;
-                        return isInline ? (
-                          <code className="bg-[#003B00]/50 px-1.5 py-0.5 rounded text-[#008F11] font-mono text-xs">
-                            {children}
-                          </code>
-                        ) : (
-                          <code className="block bg-[#003B00]/50 p-3 rounded text-[#008F11] font-mono text-xs overflow-x-auto mb-3">
-                            {children}
-                          </code>
-                        );
-                      },
-                      h1: ({ children }) => (
-                        <h1 className="text-lg font-bold mb-2 mt-4 first:mt-0">
-                          {children}
-                        </h1>
-                      ),
-                      h2: ({ children }) => (
-                        <h2 className="text-base font-bold mb-2 mt-4 first:mt-0">
-                          {children}
-                        </h2>
-                      ),
-                      h3: ({ children }) => (
-                        <h3 className="text-sm font-bold mb-2 mt-3 first:mt-0">
-                          {children}
-                        </h3>
-                      ),
-                      blockquote: ({ children }) => (
-                        <blockquote className="border-l-2 border-[#00FF41]/40 pl-4 my-3 italic text-[#008F11]">
-                          {children}
-                        </blockquote>
-                      ),
-                      hr: () => <hr className="my-4 border-[#003B00]" />,
-                      a: ({ children, href }) => (
-                        <a
-                          href={href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[#008F11] hover:text-[#00FF41] underline"
-                        >
-                          {children}
-                        </a>
-                      ),
-                    }}
-                  >
-                    {msg.content}
-                  </ReactMarkdown>
+                  <>
+                    <div
+                      className={`w-1.5 h-1.5 ${
+                        msg.metadata?.fromOperator
+                          ? "bg-[#FFD700]"
+                          : "bg-[#00FF41]"
+                      } shadow-[0_0_5px_${
+                        msg.metadata?.fromOperator ? "#FFD700" : "#00FF41"
+                      }]`}
+                    />
+                    <span>
+                      {msg.metadata?.fromOperator
+                        ? "ERHAN"
+                        : translate("chat.systemArchive")}
+                    </span>
+                  </>
                 )}
               </div>
+              <div
+                className={`flex ${
+                  msg.role === "user" ? "justify-end" : "justify-start"
+                }`}
+              >
+                <div
+                  className={`max-w-[90%] sm:max-w-[85%] px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm leading-relaxed border-t border-b border-[#003B00] transition-all group-hover:border-[#00FF41]/40 markdown-content ${
+                    msg.role === "user"
+                      ? "text-[#00FF41] text-right bg-[#00FF41]/5"
+                      : "text-[#00FF41] bg-[#003B00]/10"
+                  }`}
+                >
+                  {shouldAnimate(msg, index) ? (
+                    <TypewriterMarkdown
+                      text={msg.content}
+                      speed={msg.id === "welcome" ? 18 : 8}
+                      onComplete={() => handleTypeComplete(msg.id)}
+                    />
+                  ) : (
+                    <ReactMarkdown
+                      components={{
+                        p: ({ children }) => (
+                          <p className="mb-3 last:mb-0">{children}</p>
+                        ),
+                        strong: ({ children }) => (
+                          <strong className="font-bold text-[#00FF41]">
+                            {children}
+                          </strong>
+                        ),
+                        em: ({ children }) => (
+                          <em className="italic text-[#008F11]">{children}</em>
+                        ),
+                        ul: ({ children }) => (
+                          <ul className="list-disc list-inside mb-3 space-y-1 ml-4">
+                            {children}
+                          </ul>
+                        ),
+                        ol: ({ children }) => (
+                          <ol className="list-decimal list-inside mb-3 space-y-1 ml-4">
+                            {children}
+                          </ol>
+                        ),
+                        li: ({ children }) => (
+                          <li className="ml-2">{children}</li>
+                        ),
+                        code: ({ children, className }) => {
+                          const isInline = !className;
+                          return isInline ? (
+                            <code className="bg-[#003B00]/50 px-1.5 py-0.5 rounded text-[#008F11] font-mono text-xs">
+                              {children}
+                            </code>
+                          ) : (
+                            <code className="block bg-[#003B00]/50 p-3 rounded text-[#008F11] font-mono text-xs overflow-x-auto mb-3">
+                              {children}
+                            </code>
+                          );
+                        },
+                        h1: ({ children }) => (
+                          <h1 className="text-lg font-bold mb-2 mt-4 first:mt-0">
+                            {children}
+                          </h1>
+                        ),
+                        h2: ({ children }) => (
+                          <h2 className="text-base font-bold mb-2 mt-4 first:mt-0">
+                            {children}
+                          </h2>
+                        ),
+                        h3: ({ children }) => (
+                          <h3 className="text-sm font-bold mb-2 mt-3 first:mt-0">
+                            {children}
+                          </h3>
+                        ),
+                        blockquote: ({ children }) => (
+                          <blockquote className="border-l-2 border-[#00FF41]/40 pl-4 my-3 italic text-[#008F11]">
+                            {children}
+                          </blockquote>
+                        ),
+                        hr: () => <hr className="my-4 border-[#003B00]" />,
+                        a: ({ children, href }) => (
+                          <a
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#008F11] hover:text-[#00FF41] underline"
+                          >
+                            {children}
+                          </a>
+                        ),
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
-        {isLoading && (
+          );
+        })}
+        {isLoading && !isLiveMode && (
           <div className="flex justify-start items-center gap-3">
             <div className="w-1.5 h-4 bg-[#00FF41] animate-pulse" />
             <span className="text-[#00FF41] text-[10px] font-bold tracking-tighter animate-pulse uppercase">
               _ Awaiting_Neural_Response...
+            </span>
+          </div>
+        )}
+        {isLiveMode && (
+          <div className="flex justify-start items-center gap-3">
+            <div className="w-1.5 h-4 bg-[#FFD700] animate-pulse" />
+            <span className="text-[#FFD700] text-[10px] font-bold tracking-tighter animate-pulse uppercase">
+              Erhan is typing...
             </span>
           </div>
         )}
