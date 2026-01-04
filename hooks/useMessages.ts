@@ -25,7 +25,12 @@ interface UseMessagesReturn {
   riddleActive: boolean;
   addMessage: (message: Message) => void;
   addSystemMessage: (content: string) => void;
-  handleSendMessage: (text: string) => Promise<Project | null>;
+  addOperatorMessage: (content: string) => void;
+  addOperatorJoinedDivider: () => void;
+  handleSendMessage: (
+    text: string,
+    skipAI?: boolean
+  ) => Promise<Project | null>;
   updateTransientMessage: (
     role: "user" | "assistant",
     text: string,
@@ -76,6 +81,34 @@ export const useMessages = (
     ]);
   }, []);
 
+  // Add operator message (from Erhan in live mode)
+  const addOperatorMessage = useCallback((content: string) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `operator-${Date.now()}`,
+        role: "assistant",
+        content,
+        timestamp: Date.now(),
+        metadata: { fromOperator: true },
+      },
+    ]);
+  }, []);
+
+  // Add "Erhan joined" divider
+  const addOperatorJoinedDivider = useCallback(() => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `divider-joined-${Date.now()}`,
+        role: "system",
+        content: "OPERATOR_JOINED",
+        timestamp: Date.now(),
+        metadata: { isDivider: true, dividerType: "operator_joined" },
+      },
+    ]);
+  }, []);
+
   const updateTransientMessage = useCallback(
     (role: "user" | "assistant", text: string, append: boolean = true) => {
       setMessages((prev) => {
@@ -115,7 +148,7 @@ export const useMessages = (
   }, []);
 
   const handleSendMessage = useCallback(
-    async (text: string): Promise<Project | null> => {
+    async (text: string, skipAI: boolean = false): Promise<Project | null> => {
       // Check network connectivity first
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         setMessages((prev) => [
@@ -138,6 +171,13 @@ export const useMessages = (
         timestamp: Date.now(),
       };
       setMessages((prev) => [...prev, userMsg]);
+
+      // If in live mode (skipAI), just add the message and wait for operator
+      if (skipAI) {
+        setIsLoading(false);
+        return null;
+      }
+
       setIsLoading(true);
 
       let projectToShow: Project | null = null;
@@ -315,6 +355,8 @@ export const useMessages = (
     riddleActive,
     addMessage,
     addSystemMessage,
+    addOperatorMessage,
+    addOperatorJoinedDivider,
     handleSendMessage,
     updateTransientMessage,
     finalizeTransientMessages,
