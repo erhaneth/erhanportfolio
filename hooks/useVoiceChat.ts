@@ -30,6 +30,7 @@ interface UseVoiceChatOptions {
 
 interface UseVoiceChatReturn {
   isVoiceEnabled: boolean;
+  isConnecting: boolean;
   isAiTalking: boolean;
   userVolume: number;
   aiVolume: number;
@@ -53,6 +54,7 @@ export const useVoiceChat = (
   } = options;
 
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [isAiTalking, setIsAiTalking] = useState(false);
   const [userVolume, setUserVolume] = useState(0);
   const [aiVolume, setAiVolume] = useState(0);
@@ -123,6 +125,7 @@ export const useVoiceChat = (
 
     // Reset state
     setIsVoiceEnabled(false);
+    setIsConnecting(false);
     setIsAiTalking(false);
     setUserVolume(0);
     setAiVolume(0);
@@ -130,6 +133,7 @@ export const useVoiceChat = (
 
   const startVoiceChat = useCallback(async () => {
     console.log("startVoiceChat called");
+    setIsConnecting(true);
 
     // Defer heavy initialization to next event loop to avoid blocking typewriter animation
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -321,6 +325,7 @@ export const useVoiceChat = (
             onSystemMessage?.(
               "[VOICE_LINK_ESTABLISHED]: Listening for audio input..."
             );
+            setIsConnecting(false);
           },
 
           onMessage: async (message: any) => {
@@ -462,6 +467,7 @@ export const useVoiceChat = (
     } catch (err: any) {
       console.error("Microphone access denied or error:", err);
       setIsVoiceEnabled(false);
+      setIsConnecting(false);
 
       // Show user-friendly error message with mobile-specific guidance
       let errorMessage = "";
@@ -532,6 +538,7 @@ export const useVoiceChat = (
 
   return {
     isVoiceEnabled,
+    isConnecting,
     isAiTalking,
     userVolume,
     aiVolume,
