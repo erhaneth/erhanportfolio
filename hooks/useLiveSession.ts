@@ -10,18 +10,13 @@ import {
   getCurrentSessionId,
   OperatorMessage,
 } from "../services/liveSessionService";
-import {
-  analyzeIntent,
-  shouldNotifySlack,
-  markSessionNotified,
-} from "../services/intentService";
 
 interface UseLiveSessionReturn {
   isLiveMode: boolean;
   operatorJoinedAt: number | null;
   sessionId: string;
   sendMessage: (content: string) => Promise<void>;
-  checkIntent: (messages: { role: string; content: string }[]) => Promise<void>;
+  checkAndNotify: (messages: { role: string; content: string }[]) => Promise<void>;
 }
 
 export const useLiveSession = (
@@ -32,7 +27,7 @@ export const useLiveSession = (
   const [operatorJoinedAt, setOperatorJoinedAt] = useState<number | null>(null);
   const [sessionId] = useState(getCurrentSessionId);
   const hasNotifiedJoin = useRef(false);
-  const lastAnalyzedLength = useRef(0);
+  const hasNotifiedSlack = useRef(false);
 
   // Subscribe to live session state
   useEffect(() => {
@@ -76,32 +71,33 @@ export const useLiveSession = (
     [sessionId]
   );
 
-  // Check intent and notify Slack if hot lead
-  const checkIntent = useCallback(
+  // Check message count and notify Slack after 2 user messages
+  const checkAndNotify = useCallback(
     async (messages: { role: string; content: string }[]) => {
-      // Only analyze every 3 messages to save API calls
       const userMsgCount = messages.filter((m) => m.role === "user").length;
-      if (userMsgCount < lastAnalyzedLength.current || userMsgCount % 3 !== 0) {
-        return;
-      }
-      lastAnalyzedLength.current = userMsgCount;
 
-      try {
-        const analysis = await analyzeIntent(messages);
+      // Notify Slack after exactly 2 user messages (first check only)
+      if (userMsgCount === 2 && !hasNotifiedSlack.current) {
+        hasNotifiedSlack.current = true;
+        console.log("[LiveSession] 2 messages detected, notifying Slack");
 
-        // Check if we should notify Slack
-        if (shouldNotifySlack(sessionId, analysis.intent)) {
-          console.log("[LiveSession] Hot lead detected, notifying Slack");
+        try {
+          // Get last few messages for context
+          const recentMessages = messages.slice(-5);
+          const summary = recentMessages
+            .filter((m) => m.role === "user")
+            .map((m) => m.content)
+            .join(" ");
+
           await notifyHotLead(
             sessionId,
             messages,
-            analysis.summary,
-            analysis.signals
+            `User interested in chatting`,
+            [summary.substring(0, 80)]
           );
-          markSessionNotified(sessionId);
+        } catch (error) {
+          console.error("[LiveSession] Failed to notify Slack:", error);
         }
-      } catch (error) {
-        console.error("[LiveSession] Intent check failed:", error);
       }
     },
     [sessionId]
@@ -112,6 +108,6 @@ export const useLiveSession = (
     operatorJoinedAt,
     sessionId,
     sendMessage,
-    checkIntent,
+    checkAndNotify,
   };
 };
