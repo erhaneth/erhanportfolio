@@ -1,7 +1,7 @@
 // Admin Dashboard Service
 // Fetches active sessions and allows operator control
 
-import { ref, get, query, orderByChild, limitToLast } from "firebase/database";
+import { ref, get, query, orderByChild, limitToLast, onValue, off } from "firebase/database";
 import { database } from "./firebaseService";
 
 export interface SessionInfo {
@@ -113,7 +113,6 @@ export const subscribeToConversation = (
   sessionId: string,
   onUpdate: (messages: any[]) => void
 ): (() => void) => {
-  const { onValue, off } = require("firebase/database");
   const messagesRef = ref(database, `messages/${sessionId}`);
 
   const unsubscribe = onValue(messagesRef, (snapshot: any) => {
