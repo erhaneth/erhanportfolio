@@ -101,104 +101,22 @@ export const notifyHotLead = async (
   signals: string[]
 ): Promise<boolean> => {
   const historyText = conversationHistory
-    .slice(-8)
+    .slice(-5)
     .map(
       (m) =>
-        `${m.role === "user" ? "👤" : "🤖"} ${m.content.substring(0, 150)}${
-          m.content.length > 150 ? "..." : ""
+        `${m.role === "user" ? "👤" : "🤖"} ${m.content.substring(0, 100)}${
+          m.content.length > 100 ? "..." : ""
         }`
     )
     .join("\n");
 
+  // Use simple text format for maximum compatibility with Slack webhooks
   const payload = {
-    text: `🔥 Hot Lead Detected - Session ${sessionId}`,
-    blocks: [
-      {
-        type: "header",
-        text: {
-          type: "plain_text",
-          text: "🔥 Hot Lead Detected",
-          emoji: true,
-        },
-      },
-      {
-        type: "section",
-        fields: [
-          {
-            type: "mrkdwn",
-            text: `*Session:*\n\`${sessionId}\``,
-          },
-          {
-            type: "mrkdwn",
-            text: `*Time:*\n${new Date().toLocaleString()}`,
-          },
-        ],
-      },
-      {
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: `*🎯 Intent Summary:*\n${intentSummary}`,
-        },
-      },
-      {
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: `*📊 Signals Detected:*\n${signals
-            .map((s) => `• ${s}`)
-            .join("\n")}`,
-        },
-      },
-      {
-        type: "divider",
-      },
-      {
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: `*💬 Conversation:*\n\`\`\`${historyText}\`\`\``,
-        },
-      },
-      {
-        type: "context",
-        elements: [
-          {
-            type: "mrkdwn",
-            text: `👻 *Ghost Mode:* You can observe silently. Type \`/join ${sessionId}\` to join the chat.`,
-          },
-        ],
-      },
-      {
-        type: "actions",
-        elements: [
-          {
-            type: "button",
-            text: {
-              type: "plain_text",
-              text: "🚀 Join Chat",
-              emoji: true,
-            },
-            style: "primary",
-            action_id: `join_chat_${sessionId}`,
-            value: sessionId,
-          },
-          {
-            type: "button",
-            text: {
-              type: "plain_text",
-              text: "🔗 Open Portfolio",
-              emoji: true,
-            },
-            url:
-              typeof window !== "undefined"
-                ? window.location.origin
-                : "https://erhan.ai",
-            action_id: "open_portfolio",
-          },
-        ],
-      },
-    ],
+    text: `🔥 *Hot Lead Detected*\n\n*Session:* \`${sessionId}\`\n*Time:* ${new Date().toLocaleString()}\n\n*Intent:* ${intentSummary}\n*Signals:* ${signals
+      .slice(0, 3)
+      .join(
+        ", "
+      )}\n\n*Conversation:*\n${historyText}\n\n_Reply with_ \`/join ${sessionId}\` _to join or_ \`[${sessionId}] message\` _to send_`,
   };
 
   try {
@@ -207,6 +125,15 @@ export const notifyHotLead = async (
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+
+    if (!response.ok) {
+      console.error(
+        "[LiveSession] Slack webhook failed:",
+        response.status,
+        await response.text()
+      );
+    }
+
     return response.ok;
   } catch (error) {
     console.error("[LiveSession] Failed to notify Slack:", error);
