@@ -1,14 +1,7 @@
 // Live Session Service
 // Handles the live chat mode when Erhan joins the conversation
 
-import {
-  ref,
-  onValue,
-  off,
-  set,
-  push,
-  serverTimestamp,
-} from "firebase/database";
+import { ref, onValue, off, set } from "firebase/database";
 import { database, storeMessage } from "./firebaseService";
 import { getSessionId } from "./slackService";
 
@@ -25,6 +18,9 @@ export interface OperatorMessage {
   timestamp: number;
 }
 
+// Track processed message IDs to avoid duplicates
+const processedMessageIds = new Set<string>();
+
 // Subscribe to live session state changes
 export const subscribeToLiveSession = (
   sessionId: string,
@@ -32,7 +28,7 @@ export const subscribeToLiveSession = (
 ): (() => void) => {
   const sessionRef = ref(database, `sessions/${sessionId}/live`);
 
-  const unsubscribe = onValue(sessionRef, (snapshot) => {
+  onValue(sessionRef, (snapshot) => {
     const liveData = snapshot.val();
     if (liveData) {
       onLiveChange(liveData.isLive === true, liveData.operatorJoinedAt || null);
@@ -50,19 +46,20 @@ export const subscribeToOperatorMessages = (
   onMessage: (message: OperatorMessage) => void
 ): (() => void) => {
   const messagesRef = ref(database, `messages/${sessionId}`);
-  let lastProcessedTimestamp = Date.now();
 
-  const unsubscribe = onValue(messagesRef, (snapshot) => {
+  onValue(messagesRef, (snapshot) => {
     snapshot.forEach((child) => {
       const msg = child.val();
-      // Only process new operator messages
-      if (msg.role === "operator" && msg.timestamp > lastProcessedTimestamp) {
+      const msgId = child.key || `${msg.timestamp}`;
+
+      // Only process operator messages we haven't seen before
+      if (msg.role === "operator" && !processedMessageIds.has(msgId)) {
+        processedMessageIds.add(msgId);
         onMessage({
-          id: child.key || `${msg.timestamp}`,
+          id: msgId,
           content: msg.content,
           timestamp: msg.timestamp,
         });
-        lastProcessedTimestamp = msg.timestamp;
       }
     });
   });

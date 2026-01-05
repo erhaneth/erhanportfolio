@@ -81,10 +81,7 @@ export const useLiveSession = (
     async (messages: { role: string; content: string }[]) => {
       // Only analyze every 3 messages to save API calls
       const userMsgCount = messages.filter((m) => m.role === "user").length;
-      if (
-        userMsgCount <= lastAnalyzedLength.current ||
-        userMsgCount % 3 !== 0
-      ) {
+      if (userMsgCount < lastAnalyzedLength.current || userMsgCount % 3 !== 0) {
         return;
       }
       lastAnalyzedLength.current = userMsgCount;

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
-import { Project, Message } from "./types";
+import { Project } from "./types";
 import { PORTFOLIO_DATA } from "./constants";
 import ChatInterface from "./components/ChatInterface";
 import ProjectDisplay from "./components/ProjectDisplay";
@@ -104,7 +104,6 @@ const App: React.FC = () => {
   // Live session hook - handles operator joining and messages
   const {
     isLiveMode,
-    sessionId,
     sendMessage: sendToOperator,
     checkIntent,
   } = useLiveSession(
