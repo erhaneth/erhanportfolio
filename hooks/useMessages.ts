@@ -29,7 +29,8 @@ interface UseMessagesReturn {
   addOperatorJoinedDivider: () => void;
   handleSendMessage: (
     text: string,
-    skipAI?: boolean
+    skipAI?: boolean,
+    onComplete?: (updatedMessages: Message[]) => void
   ) => Promise<Project | null>;
   updateTransientMessage: (
     role: "user" | "assistant",
@@ -148,7 +149,11 @@ export const useMessages = (
   }, []);
 
   const handleSendMessage = useCallback(
-    async (text: string, skipAI: boolean = false): Promise<Project | null> => {
+    async (
+      text: string,
+      skipAI: boolean = false,
+      onComplete?: (updatedMessages: Message[]) => void
+    ): Promise<Project | null> => {
       // Check network connectivity first
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         setMessages((prev) => [
@@ -235,7 +240,20 @@ export const useMessages = (
           timestamp: Date.now(),
         };
 
-        setMessages((prev) => [...prev, assistantMsg]);
+        // Build final messages array and update state
+        let finalMessages: Message[] = [];
+        setMessages((prev) => {
+          finalMessages = [...prev, assistantMsg];
+          return finalMessages;
+        });
+
+        // Call onComplete callback with updated messages (fire and forget)
+        if (onComplete) {
+          // Use setTimeout to ensure state has updated
+          setTimeout(() => {
+            onComplete(finalMessages);
+          }, 0);
+        }
 
         if (functionCalls && functionCalls.length > 0) {
           for (const fc of functionCalls) {
@@ -306,10 +324,12 @@ export const useMessages = (
               "[ERROR]: Request timeout. The server took too long to respond. Please try again.";
           } else if (
             error.message.includes("quota") ||
-            error.message.includes("rate limit")
+            error.message.includes("rate limit") ||
+            error.message.includes("429") ||
+            error.message.includes("Too Many Requests")
           ) {
             errorMessage =
-              "[ERROR]: API rate limit exceeded. Please try again in a moment.";
+              "[SYSTEM_OVERLOAD]: Too many operators accessing the mainframe. Neural pathways cooling down... Try again in 30 seconds. ⚡";
           } else {
             errorMessage = `[ERROR]: ${
               error.message || "Unknown error occurred. Please try again."

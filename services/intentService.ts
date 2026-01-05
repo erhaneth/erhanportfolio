@@ -48,52 +48,13 @@ export const analyzeIntent = async (
     return cached.analysis;
   }
 
-  try {
-    const conversationText = messages
-      .slice(-10)
-      .map((m) => `${m.role === "user" ? "Visitor" : "AI"}: ${m.content}`)
-      .join("\n");
+  // Use local heuristic analysis (fast, no API calls needed)
+  const analysis = analyzeIntentLocally(messages);
 
-    const prompt = `Analyze this conversation and classify the visitor's intent.
+  // Cache the result
+  analysisCache.set(cacheKey, { analysis, timestamp: Date.now() });
 
-CONVERSATION:
-${conversationText}
-
-CLASSIFICATION:
-- casual: Just browsing, curious, or testing the AI
-- interested: Asking meaningful questions about skills, projects, or experience
-- hot_lead: Showing hiring signals (discussing roles, availability, interview, company needs, wants to connect)
-
-Respond in JSON format only:
-{
-  "intent": "casual" | "interested" | "hot_lead",
-  "confidence": 0-100,
-  "signals": ["list of signals you detected"],
-  "summary": "one sentence summary of what they're looking for"
-}`;
-
-    const response = await fetch("/.netlify/functions/slack-webhook", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "intent_analysis",
-        prompt,
-      }),
-    });
-
-    // For now, use a simple heuristic until we set up the proper endpoint
-    // This will be replaced with actual Gemini call
-    const analysis = analyzeIntentLocally(messages);
-
-    // Cache the result
-    analysisCache.set(cacheKey, { analysis, timestamp: Date.now() });
-
-    return analysis;
-  } catch (error) {
-    console.error("[IntentService] Analysis failed:", error);
-    // Fallback to local analysis
-    return analyzeIntentLocally(messages);
-  }
+  return analysis;
 };
 
 // Local heuristic analysis (fallback and for cost savings)
