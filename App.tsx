@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Project } from "./types";
 import { PORTFOLIO_DATA } from "./constants";
 import ChatInterface from "./components/ChatInterface";
@@ -16,6 +17,7 @@ import { useMessages } from "./hooks/useMessages";
 import { useVoiceChat } from "./hooks/useVoiceChat";
 import { sendResume } from "./services/emailService";
 import { useLanguage } from "./contexts/LanguageContext";
+import { AdminDashboard } from "./components/AdminDashboard";
 
 // Load test utilities in development only
 if (import.meta.env.DEV) {
@@ -24,7 +26,7 @@ if (import.meta.env.DEV) {
 
 type UserMode = "hiring" | "visiting" | null;
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const {
     language,
     detectAndSetLanguage,
@@ -107,7 +109,7 @@ const App: React.FC = () => {
   const {
     isLiveMode,
     sendMessage: sendToOperator,
-    checkIntent,
+    checkAndNotify,
   } = useLiveSession(
     // Handle incoming operator messages
     useCallback(
@@ -199,10 +201,10 @@ const App: React.FC = () => {
         await sendToOperator(text);
         await handleSendMessage(text, true); // skipAI = true
       } else {
-        // Normal AI mode - pass callback for intent checking AFTER AI responds
+        // Normal AI mode - notify Slack after 2 messages
         await handleSendMessage(text, false, (updatedMessages) => {
-          // Check intent with the actual updated messages (includes AI response)
-          checkIntent(
+          // Check if we should notify Slack
+          checkAndNotify(
             updatedMessages.map((m) => ({ role: m.role, content: m.content }))
           );
         });
@@ -213,7 +215,7 @@ const App: React.FC = () => {
       detectAndSetLanguage,
       isLiveMode,
       sendToOperator,
-      checkIntent,
+      checkAndNotify,
     ]
   );
 
@@ -575,5 +577,14 @@ const App: React.FC = () => {
     </div>
   );
 };
-
+const App: React.FC = () => {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="*" element={<AppContent />} />
+      </Routes>
+    </Router>
+  );
+};
 export default App;
