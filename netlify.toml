@@ -15,4 +15,10 @@
   to = "/.netlify/functions/:splat"
   status = 200
 
+# SPA fallback - serve index.html for all routes (except assets and functions)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
 

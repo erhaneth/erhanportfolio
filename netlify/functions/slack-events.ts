@@ -131,6 +131,10 @@ export const handler: Handler = async (event) => {
         if (message) {
           console.log(`Storing to Firebase: messages/${sessionId}`);
 
+          // First, ensure the session is in live mode (auto-join when sending message)
+          await setSessionLive(sessionId, true);
+          console.log("Session set to live mode");
+
           // Use Firebase REST API (no auth needed since rules allow public write)
           const firebasePayload = {
             sessionId,
