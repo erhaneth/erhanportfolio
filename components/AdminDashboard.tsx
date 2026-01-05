@@ -19,12 +19,26 @@ export const AdminDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Load sessions
+  // Load sessions - preserve expanded state and message input
   const loadSessions = async () => {
     setLoading(true);
     try {
       const data = await getActiveSessions();
-      setSessions(data);
+      // Merge with existing state to preserve isExpanded, conversation, messageInput
+      setSessions((prev) => {
+        return data.map((newSession) => {
+          const existingSession = prev.find((s) => s.sessionId === newSession.sessionId);
+          if (existingSession) {
+            return {
+              ...newSession,
+              isExpanded: existingSession.isExpanded,
+              conversation: existingSession.conversation,
+              messageInput: existingSession.messageInput,
+            };
+          }
+          return newSession;
+        });
+      });
       setError(null);
     } catch (err) {
       setError("Failed to load sessions");
@@ -33,11 +47,11 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Auto-refresh every 5 seconds
+  // Auto-refresh every 10 seconds (less aggressive)
   useEffect(() => {
     if (!isAuthenticated) return;
     loadSessions();
-    const interval = setInterval(loadSessions, 5000);
+    const interval = setInterval(loadSessions, 10000);
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
@@ -342,7 +356,7 @@ export const AdminDashboard: React.FC = () => {
                           <div
                             key={idx}
                             className={`text-xs p-2 rounded ${
-                              msg.role === "user"
+                              msg.role === "user" || msg.role === "visitor"
                                 ? "bg-[#1a3a1a]/50 border-l-2 border-[#00FF41]"
                                 : msg.role === "operator"
                                 ? "bg-[#3a2a1a]/50 border-l-2 border-yellow-500"
@@ -350,11 +364,11 @@ export const AdminDashboard: React.FC = () => {
                             }`}
                           >
                             <strong className="text-[#00FF41]">
-                              {msg.role.toUpperCase()}:
+                              {msg.role === "visitor" ? "VISITOR" : msg.role === "operator" ? "ERHAN" : msg.role.toUpperCase()}:
                             </strong>{" "}
                             <span className="text-[#00FF41]/80">
-                              {msg.content?.substring(0, 150)}
-                              {msg.content?.length > 150 ? "..." : ""}
+                              {msg.content?.substring(0, 300)}
+                              {msg.content?.length > 300 ? "..." : ""}
                             </span>
                           </div>
                         ))}
