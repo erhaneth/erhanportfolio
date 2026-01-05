@@ -199,19 +199,13 @@ const App: React.FC = () => {
         await sendToOperator(text);
         await handleSendMessage(text, true); // skipAI = true
       } else {
-        // Normal AI mode
-        await handleSendMessage(text, false);
-
-        // Check intent after AI responds (for hot lead detection)
-        const updatedMessages = messages.concat({
-          id: "temp",
-          role: "user",
-          content: text,
-          timestamp: Date.now(),
+        // Normal AI mode - pass callback for intent checking AFTER AI responds
+        await handleSendMessage(text, false, (updatedMessages) => {
+          // Check intent with the actual updated messages (includes AI response)
+          checkIntent(
+            updatedMessages.map((m) => ({ role: m.role, content: m.content }))
+          );
         });
-        checkIntent(
-          updatedMessages.map((m) => ({ role: m.role, content: m.content }))
-        );
       }
     },
     [
@@ -219,7 +213,6 @@ const App: React.FC = () => {
       detectAndSetLanguage,
       isLiveMode,
       sendToOperator,
-      messages,
       checkIntent,
     ]
   );

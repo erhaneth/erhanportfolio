@@ -53,7 +53,7 @@ const requestResumeEmailTool: FunctionDeclaration = {
   parameters: {
     type: Type.OBJECT,
     description:
-      "Requests the user's email address to send Erhan's resume. Use this when a recruiter asks for a resume, CV, or wants to receive Erhan's information via email.",
+      "Requests the user's email address to send Erhan's resume/CV. ONLY use this when the user EXPLICITLY asks for a resume, CV, or to receive the resume document. Do NOT use for general contact requests or other inquiries.",
     properties: {},
   },
 };
