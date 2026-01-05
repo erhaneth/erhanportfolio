@@ -17,8 +17,10 @@ import { useVoiceChat } from "./hooks/useVoiceChat";
 import { sendResume } from "./services/emailService";
 import { useLanguage } from "./contexts/LanguageContext";
 
-// Load test utilities in development
-import "./services/testUtils";
+// Load test utilities in development only
+if (import.meta.env.DEV) {
+  import("./services/testUtils");
+}
 
 type UserMode = "hiring" | "visiting" | null;
 
