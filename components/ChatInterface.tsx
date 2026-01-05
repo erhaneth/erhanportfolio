@@ -20,6 +20,7 @@ interface ChatInterfaceProps {
   isAiTalking?: boolean;
   // Live mode
   isLiveMode?: boolean;
+  isOperatorTyping?: boolean;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
@@ -34,6 +35,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   aiVolume = 0,
   isAiTalking = false,
   isLiveMode = false,
+  isOperatorTyping = false,
 }) => {
   const { translate } = useLanguage();
   const [input, setInput] = React.useState("");
@@ -277,7 +279,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             </span>
           </div>
         )}
-        {isLiveMode && (
+        {isLiveMode && isOperatorTyping && (
           <div className="flex justify-start items-center gap-3">
             <div className="w-1.5 h-4 bg-[#FFD700] animate-pulse" />
             <span className="text-[#FFD700] text-[10px] font-bold tracking-tighter animate-pulse uppercase">

@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { getActiveSessions, getSessionConversation, SessionInfo } from "../services/adminService";
-import { setSessionLive } from "../services/liveSessionService";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { getActiveSessions, getSessionConversation, subscribeToConversation, SessionInfo } from "../services/adminService";
+import { setSessionLive, sendOperatorMessage, setOperatorTyping } from "../services/liveSessionService";
 import { useNavigate } from "react-router-dom";
 
 interface ExpandedSession extends SessionInfo {
   conversation?: any[];
   isExpanded?: boolean;
+  messageInput?: string;
 }
 
 const ADMIN_PASSWORD = "erhan2024"; // Change this to your desired password
@@ -40,8 +41,14 @@ export const AdminDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
+  // Track active subscriptions
+  const subscriptionsRef = useRef<{ [key: string]: () => void }>({});
+
   // Toggle session expansion
   const toggleSession = async (sessionId: string) => {
+    const session = sessions.find((s) => s.sessionId === sessionId);
+    const wasExpanded = session?.isExpanded;
+
     setSessions((prev) =>
       prev.map((s) => {
         if (s.sessionId === sessionId) {
@@ -51,17 +58,40 @@ export const AdminDashboard: React.FC = () => {
       })
     );
 
-    // Load conversation if expanding
-    const session = sessions.find((s) => s.sessionId === sessionId);
-    if (session && !session.isExpanded) {
+    // If expanding, subscribe to real-time updates
+    if (!wasExpanded) {
+      // Initial load
       const conversation = await getSessionConversation(sessionId);
       setSessions((prev) =>
         prev.map((s) =>
           s.sessionId === sessionId ? { ...s, conversation } : s
         )
       );
+
+      // Subscribe to real-time updates
+      const unsubscribe = subscribeToConversation(sessionId, (conversation) => {
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.sessionId === sessionId ? { ...s, conversation } : s
+          )
+        );
+      });
+      subscriptionsRef.current[sessionId] = unsubscribe;
+    } else {
+      // If collapsing, unsubscribe
+      if (subscriptionsRef.current[sessionId]) {
+        subscriptionsRef.current[sessionId]();
+        delete subscriptionsRef.current[sessionId];
+      }
     }
   };
+
+  // Cleanup subscriptions on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(subscriptionsRef.current).forEach((unsub) => unsub());
+    };
+  }, []);
 
   // Join a session
   const handleJoin = async (sessionId: string) => {
@@ -88,6 +118,68 @@ export const AdminDashboard: React.FC = () => {
       );
     } catch (err) {
       setError("Failed to leave session");
+    }
+  };
+
+  // Handle message input change with typing indicator
+  const typingTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
+
+  const handleMessageInputChange = useCallback(
+    (sessionId: string, value: string) => {
+      // Update local state
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.sessionId === sessionId ? { ...s, messageInput: value } : s
+        )
+      );
+
+      // Set typing indicator
+      setOperatorTyping(sessionId, true);
+
+      // Clear previous timeout
+      if (typingTimeoutRef.current[sessionId]) {
+        clearTimeout(typingTimeoutRef.current[sessionId]);
+      }
+
+      // Set timeout to clear typing after 2 seconds of no typing
+      typingTimeoutRef.current[sessionId] = setTimeout(() => {
+        setOperatorTyping(sessionId, false);
+      }, 2000);
+    },
+    []
+  );
+
+  // Send message from admin dashboard
+  const handleSendMessage = async (sessionId: string) => {
+    const session = sessions.find((s) => s.sessionId === sessionId);
+    const message = session?.messageInput?.trim();
+    if (!message) return;
+
+    try {
+      // Ensure session is live
+      if (!session?.isLive) {
+        await setSessionLive(sessionId, true);
+      }
+
+      // Send the message
+      await sendOperatorMessage(sessionId, message);
+
+      // Clear input and refresh conversation
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.sessionId === sessionId ? { ...s, messageInput: "" } : s
+        )
+      );
+
+      // Reload conversation
+      const conversation = await getSessionConversation(sessionId);
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.sessionId === sessionId ? { ...s, conversation, isLive: true } : s
+        )
+      );
+    } catch (err) {
+      setError("Failed to send message");
     }
   };
 
@@ -245,7 +337,7 @@ export const AdminDashboard: React.FC = () => {
                 {session.isExpanded && (
                   <div className="border-t border-[#00FF41]/30 p-4 bg-[#0a0e27]/50">
                     {session.conversation ? (
-                      <div className="space-y-3 max-h-60 overflow-y-auto">
+                      <div className="space-y-3 max-h-60 overflow-y-auto mb-4">
                         {session.conversation.map((msg, idx) => (
                           <div
                             key={idx}
@@ -268,10 +360,40 @@ export const AdminDashboard: React.FC = () => {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-[#00FF41]/70 text-xs">
+                      <p className="text-[#00FF41]/70 text-xs mb-4">
                         [LOADING_CONVERSATION]...
                       </p>
                     )}
+
+                    {/* Chat Input */}
+                    <div className="flex gap-2 pt-2 border-t border-[#00FF41]/20">
+                      <input
+                        type="text"
+                        value={session.messageInput || ""}
+                        onChange={(e) =>
+                          handleMessageInputChange(session.sessionId, e.target.value)
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage(session.sessionId);
+                          }
+                        }}
+                        placeholder="Type a message..."
+                        className="flex-1 bg-[#1a1f3a] border border-[#00FF41]/30 rounded px-3 py-2 text-[#00FF41] text-sm placeholder-[#00FF41]/40 focus:outline-none focus:border-[#00FF41]"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSendMessage(session.sessionId);
+                        }}
+                        disabled={!session.messageInput?.trim()}
+                        className="bg-[#00FF41] text-black px-4 py-2 rounded text-sm font-bold hover:bg-[#00DD33] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        [SEND]
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

@@ -108,6 +108,7 @@ const AppContent: React.FC = () => {
   // Live session hook - handles operator joining and messages
   const {
     isLiveMode,
+    isOperatorTyping,
     sendMessage: sendToOperator,
     checkAndNotify,
   } = useLiveSession(
@@ -422,6 +423,7 @@ const AppContent: React.FC = () => {
             aiVolume={aiVolume}
             isAiTalking={isAiTalking}
             isLiveMode={isLiveMode}
+            isOperatorTyping={isOperatorTyping}
           />
         </section>
 
@@ -581,7 +583,7 @@ const App: React.FC = () => {
   return (
     <Router>
       <Routes>
-        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin3873" element={<AdminDashboard />} />
         <Route path="*" element={<AppContent />} />
       </Routes>
     </Router>

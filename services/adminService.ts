@@ -107,3 +107,28 @@ export const getSessionConversation = async (
     return [];
   }
 };
+
+// Subscribe to conversation updates (real-time)
+export const subscribeToConversation = (
+  sessionId: string,
+  onUpdate: (messages: any[]) => void
+): (() => void) => {
+  const { onValue, off } = require("firebase/database");
+  const messagesRef = ref(database, `messages/${sessionId}`);
+
+  const unsubscribe = onValue(messagesRef, (snapshot: any) => {
+    if (!snapshot.exists()) {
+      onUpdate([]);
+      return;
+    }
+
+    const messages: any[] = [];
+    snapshot.forEach((msgSnap: any) => {
+      messages.push(msgSnap.val());
+    });
+
+    onUpdate(messages.sort((a: any, b: any) => a.timestamp - b.timestamp));
+  });
+
+  return () => off(messagesRef);
+};

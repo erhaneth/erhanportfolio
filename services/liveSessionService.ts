@@ -80,6 +80,48 @@ export const setSessionLive = async (
   });
 };
 
+// Set operator typing status
+export const setOperatorTyping = async (
+  sessionId: string,
+  isTyping: boolean
+): Promise<void> => {
+  const typingRef = ref(database, `sessions/${sessionId}/typing`);
+  await set(typingRef, {
+    isTyping,
+    updatedAt: Date.now(),
+  });
+};
+
+// Subscribe to operator typing status
+export const subscribeToOperatorTyping = (
+  sessionId: string,
+  onTypingChange: (isTyping: boolean) => void
+): (() => void) => {
+  const typingRef = ref(database, `sessions/${sessionId}/typing`);
+
+  onValue(typingRef, (snapshot) => {
+    const data = snapshot.val();
+    // Only show typing if updated within last 3 seconds
+    if (data && data.isTyping && Date.now() - data.updatedAt < 3000) {
+      onTypingChange(true);
+    } else {
+      onTypingChange(false);
+    }
+  });
+
+  return () => off(typingRef);
+};
+
+// Send operator message to Firebase (from admin dashboard)
+export const sendOperatorMessage = async (
+  sessionId: string,
+  content: string
+): Promise<void> => {
+  await storeMessage(sessionId, "operator", content);
+  // Clear typing indicator after sending
+  await setOperatorTyping(sessionId, false);
+};
+
 // Send visitor message to Firebase (for operator to see)
 export const sendVisitorMessage = async (
   sessionId: string,
