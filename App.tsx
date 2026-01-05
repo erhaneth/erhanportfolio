@@ -4,20 +4,23 @@ import { PORTFOLIO_DATA } from "./constants";
 import ChatInterface from "./components/ChatInterface";
 import ProjectDisplay from "./components/ProjectDisplay";
 import MatrixRain from "./components/MatrixRain";
-import VoiceButton from "./components/VoiceButton";
 import EmailModal from "./components/EmailModal";
 import LanguageActivation from "./components/LanguageActivation";
 import MissionBriefing from "./components/MissionBriefing";
-import OperatorStatus from "./components/OperatorStatus";
 import ContextPills, {
   generateContextFromPills,
 } from "./components/ContextPills";
+import { useLiveSession } from "./hooks/useLiveSession";
 import GitHeatmap from "./components/GitHeatmap";
 import { useMessages } from "./hooks/useMessages";
 import { useVoiceChat } from "./hooks/useVoiceChat";
 import { sendResume } from "./services/emailService";
-import { sendMessageToSlack, getSessionId } from "./services/slackService";
 import { useLanguage } from "./contexts/LanguageContext";
+
+// Load test utilities in development only
+if (import.meta.env.DEV) {
+  import("./services/testUtils");
+}
 
 type UserMode = "hiring" | "visiting" | null;
 
@@ -53,7 +56,6 @@ const App: React.FC = () => {
   const [isSendingResume, setIsSendingResume] = useState(false);
   const [showMissionBriefing, setShowMissionBriefing] = useState(false);
   const [missionJobDescription, setMissionJobDescription] = useState("");
-  const [isOperatorMode, setIsOperatorMode] = useState(false);
   const [showGitHeatmap, setShowGitHeatmap] = useState(false);
   const [isClosingProject, setIsClosingProject] = useState(false);
   const [isClosingHeatmap, setIsClosingHeatmap] = useState(false);
@@ -89,6 +91,8 @@ const App: React.FC = () => {
     messages,
     isLoading,
     addSystemMessage,
+    addOperatorMessage,
+    addOperatorJoinedDivider,
     handleSendMessage,
     updateTransientMessage,
     finalizeTransientMessages,
@@ -97,6 +101,25 @@ const App: React.FC = () => {
     handleProjectShow,
     () => setShowEmailModal(true),
     () => setShowGitHeatmap(true)
+  );
+
+  // Live session hook - handles operator joining and messages
+  const {
+    isLiveMode,
+    sendMessage: sendToOperator,
+    checkIntent,
+  } = useLiveSession(
+    // Handle incoming operator messages
+    useCallback(
+      (message: string) => {
+        addOperatorMessage(message);
+      },
+      [addOperatorMessage]
+    ),
+    // Handle operator joined event
+    useCallback(() => {
+      addOperatorJoinedDivider();
+    }, [addOperatorJoinedDivider])
   );
 
   // Handle resume email sending
@@ -133,51 +156,72 @@ const App: React.FC = () => {
   );
 
   // Voice chat hook
-  const { isVoiceEnabled, isAiTalking, userVolume, aiVolume, toggleVoice } =
-    useVoiceChat({
-      userContext,
-      onProjectShow: handleProjectShow,
-      onInputTranscript: useCallback(
-        (text: string) => {
-          console.log("[App] onInputTranscript called with text:", text);
-          console.log("[App] Calling detectAndSetLanguage for voice input...");
-          detectAndSetLanguage(text);
-          updateTransientMessage("user", text);
-        },
-        [updateTransientMessage, detectAndSetLanguage]
-      ),
-      onOutputTranscript: useCallback(
-        (text: string) => {
-          updateTransientMessage("assistant", text);
-        },
-        [updateTransientMessage]
-      ),
-      onTurnComplete: finalizeTransientMessages,
-      onSystemMessage: addSystemMessage,
-      onResumeRequest: () => setShowEmailModal(true),
-      onShowGitHeatmap: () => setShowGitHeatmap(true),
-    });
+  const {
+    isVoiceEnabled,
+    isConnecting,
+    isAiTalking,
+    userVolume,
+    aiVolume,
+    toggleVoice,
+    stopVoiceChat,
+  } = useVoiceChat({
+    userContext,
+    onProjectShow: handleProjectShow,
+    onInputTranscript: useCallback(
+      (text: string) => {
+        console.log("[App] onInputTranscript called with text:", text);
+        console.log("[App] Calling detectAndSetLanguage for voice input...");
+        detectAndSetLanguage(text);
+        updateTransientMessage("user", text);
+      },
+      [updateTransientMessage, detectAndSetLanguage]
+    ),
+    onOutputTranscript: useCallback(
+      (text: string) => {
+        updateTransientMessage("assistant", text);
+      },
+      [updateTransientMessage]
+    ),
+    onTurnComplete: finalizeTransientMessages,
+    onSystemMessage: addSystemMessage,
+    onResumeRequest: () => setShowEmailModal(true),
+    onShowGitHeatmap: () => setShowGitHeatmap(true),
+  });
 
   // Handle text message submission
   const onSendMessage = useCallback(
     async (text: string) => {
       console.log("[App] onSendMessage called with text:", text);
-      console.log("[App] Calling detectAndSetLanguage...");
       detectAndSetLanguage(text);
 
-      // Forward to Slack if operator mode is active
-      if (isOperatorMode) {
-        sendMessageToSlack({
-          sessionId: getSessionId(),
-          message: text,
-          messageType: "visitor",
-          timestamp: new Date(),
-        });
-      }
+      if (isLiveMode) {
+        // In live mode: send to Firebase for operator, skip AI
+        await sendToOperator(text);
+        await handleSendMessage(text, true); // skipAI = true
+      } else {
+        // Normal AI mode
+        await handleSendMessage(text, false);
 
-      await handleSendMessage(text);
+        // Check intent after AI responds (for hot lead detection)
+        const updatedMessages = messages.concat({
+          id: "temp",
+          role: "user",
+          content: text,
+          timestamp: Date.now(),
+        });
+        checkIntent(
+          updatedMessages.map((m) => ({ role: m.role, content: m.content }))
+        );
+      }
     },
-    [handleSendMessage, detectAndSetLanguage, isOperatorMode]
+    [
+      handleSendMessage,
+      detectAndSetLanguage,
+      isLiveMode,
+      sendToOperator,
+      messages,
+      checkIntent,
+    ]
   );
 
   // Check if any context is set
@@ -260,43 +304,7 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Operator Direct Channel */}
-          <div className="border-b border-[#003B00] pb-4">
-            <OperatorStatus
-              conversationHistory={messages.map((m) => ({
-                role: m.role,
-                content: m.content,
-              }))}
-              userContext={userContext}
-              onOperatorModeChange={(active) => {
-                setIsOperatorMode(active);
-                if (active) {
-                  addSystemMessage(
-                    "🔗 UPLINK ESTABLISHED — Erhan has been notified and is monitoring this conversation."
-                  );
-                } else {
-                  addSystemMessage(
-                    "📡 UPLINK TERMINATED — Returning to AI mode."
-                  );
-                }
-              }}
-              onOperatorMessage={(message) => {
-                // Display operator's message in the chat
-                addSystemMessage(`👤 OPERATOR ERHAN: ${message}`);
-              }}
-            />
-          </div>
-
           <div className="space-y-4 pt-2">
-            {/* Main Voice Button */}
-            <VoiceButton
-              isActive={isVoiceEnabled}
-              onClick={toggleVoice}
-              userVolume={userVolume}
-              aiVolume={aiVolume}
-              isAiTalking={isAiTalking}
-            />
-
             {/* Context Toggle Button */}
             <button
               onClick={() => setShowContextPanel(!showContextPanel)}
@@ -385,7 +393,7 @@ const App: React.FC = () => {
         )}
 
         {/* Network Activity */}
-        <div className="glass-terminal border border-[#003B00] p-3 sm:p-4 flex-1 min-h-[100px] sm:min-h-[120px] overflow-hidden flex flex-col hidden sm:flex">
+        <div className="glass-terminal border border-[#003B00] p-3 sm:p-4 flex-1 min-h-[100px] sm:min-h-[120px] overflow-hidden flex flex-col hidden lg:flex">
           <p className="text-[10px] text-[#008F11] uppercase font-bold mb-2 flex-shrink-0">
             {translate("context.networkActivity")}
           </p>
@@ -411,6 +419,14 @@ const App: React.FC = () => {
             messages={messages}
             isLoading={isLoading && !isVoiceEnabled}
             onSendMessage={onSendMessage}
+            isVoiceEnabled={isVoiceEnabled}
+            isVoiceConnecting={isConnecting}
+            onVoiceToggle={toggleVoice}
+            onVoiceStop={stopVoiceChat}
+            userVolume={userVolume}
+            aiVolume={aiVolume}
+            isAiTalking={isAiTalking}
+            isLiveMode={isLiveMode}
           />
         </section>
 
