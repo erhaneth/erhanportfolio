@@ -142,6 +142,26 @@ export const notifyHotLead = async (
   intentSummary: string,
   signals: string[]
 ): Promise<boolean> => {
+  // Create session in Firebase first
+  const sessionRef = ref(database, `sessions/${sessionId}`);
+  const now = Date.now();
+  await set(sessionRef, {
+    id: sessionId,
+    createdAt: now,
+    lastActivity: now,
+    operatorMode: false,
+    context: intentSummary,
+  });
+
+  // Store recent conversation history in Firebase
+  for (const msg of conversationHistory.slice(-5)) {
+    await storeMessage(
+      sessionId,
+      msg.role === "user" ? "visitor" : "ai",
+      msg.content
+    );
+  }
+
   const historyText = conversationHistory
     .slice(-5)
     .map(
@@ -154,7 +174,11 @@ export const notifyHotLead = async (
 
   // Use simple text format for maximum compatibility with Slack webhooks
   const payload = {
-    text: `🔥 *Hot Lead Detected*\n\n*Session:* \`${sessionId}\`\n*Time:* ${new Date().toLocaleString()}\n\n*Intent:* ${intentSummary}\n*Signals:* ${signals.slice(0, 3).join(", ")}\n\n*Conversation:*\n${historyText}\n\n_Reply with_ \`/join ${sessionId}\` _to join or_ \`[${sessionId}] message\` _to send_`,
+    text: `🔥 *Hot Lead Detected*\n\n*Session:* \`${sessionId}\`\n*Time:* ${new Date().toLocaleString()}\n\n*Intent:* ${intentSummary}\n*Signals:* ${signals
+      .slice(0, 3)
+      .join(
+        ", "
+      )}\n\n*Conversation:*\n${historyText}\n\n_Reply with_ \`/join ${sessionId}\` _to join or_ \`[${sessionId}] message\` _to send_`,
   };
 
   try {
@@ -163,11 +187,11 @@ export const notifyHotLead = async (
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    
+
     if (!response.ok) {
       console.error("[LiveSession] Slack webhook failed:", response.status);
     }
-    
+
     return response.ok;
   } catch (error) {
     console.error("[LiveSession] Failed to notify Slack:", error);
