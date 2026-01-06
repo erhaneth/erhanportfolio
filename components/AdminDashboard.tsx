@@ -9,7 +9,7 @@ interface ExpandedSession extends SessionInfo {
   messageInput?: string;
 }
 
-const ADMIN_PASSWORD = "erhan2024"; // Change this to your desired password
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "";
 
 export const AdminDashboard: React.FC = () => {
   const [sessions, setSessions] = useState<ExpandedSession[]>([]);
@@ -227,6 +227,7 @@ export const AdminDashboard: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password..."
+                aria-label="Admin password"
                 className="w-full bg-[#1a1f3a] border border-[#00FF41]/50 rounded px-4 py-2 text-[#00FF41] placeholder-[#00FF41]/50 focus:outline-none focus:border-[#00FF41]"
                 autoFocus
               />
@@ -291,7 +292,20 @@ export const AdminDashboard: React.FC = () => {
                 className="border border-[#00FF41]/30 rounded bg-[#1a1f3a]/50 backdrop-blur-sm hover:border-[#00FF41]/60 transition"
               >
                 {/* Session Header */}
-                <div className="p-4 cursor-pointer" onClick={() => toggleSession(session.sessionId)}>
+                <div
+                  className="p-4 cursor-pointer"
+                  onClick={() => toggleSession(session.sessionId)}
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={session.isExpanded}
+                  aria-label={`Toggle session ${session.sessionId}`}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggleSession(session.sessionId);
+                    }
+                  }}
+                >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
@@ -328,6 +342,7 @@ export const AdminDashboard: React.FC = () => {
                             e.stopPropagation();
                             handleJoin(session.sessionId);
                           }}
+                          aria-label={`Join session ${session.sessionId}`}
                           className="bg-[#00FF41] text-black px-4 py-2 rounded text-sm font-bold hover:bg-[#00DD33] transition"
                         >
                           [JOIN]
@@ -338,6 +353,7 @@ export const AdminDashboard: React.FC = () => {
                             e.stopPropagation();
                             handleLeave(session.sessionId);
                           }}
+                          aria-label={`Leave session ${session.sessionId}`}
                           className="bg-red-600/50 text-red-200 px-4 py-2 rounded text-sm font-bold hover:bg-red-600 transition"
                         >
                           [LEAVE]
@@ -394,6 +410,7 @@ export const AdminDashboard: React.FC = () => {
                           }
                         }}
                         placeholder="Type a message..."
+                        aria-label="Type a message to visitor"
                         className="flex-1 bg-[#1a1f3a] border border-[#00FF41]/30 rounded px-3 py-2 text-[#00FF41] text-sm placeholder-[#00FF41]/40 focus:outline-none focus:border-[#00FF41]"
                         onClick={(e) => e.stopPropagation()}
                       />
@@ -403,6 +420,7 @@ export const AdminDashboard: React.FC = () => {
                           handleSendMessage(session.sessionId);
                         }}
                         disabled={!session.messageInput?.trim()}
+                        aria-label="Send message to visitor"
                         className="bg-[#00FF41] text-black px-4 py-2 rounded text-sm font-bold hover:bg-[#00DD33] transition disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         [SEND]

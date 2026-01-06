@@ -44,7 +44,8 @@ export const useMessages = (
   userContext: string,
   onProjectShow?: (project: Project) => void,
   onResumeRequest?: () => void,
-  onShowGitHeatmap?: () => void
+  onShowGitHeatmap?: () => void,
+  onCloseDisplay?: (target: "project" | "heatmap" | "all") => void
 ): UseMessagesReturn => {
   const { language } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([
@@ -283,6 +284,12 @@ export const useMessages = (
               // Show git heatmap
               if (onShowGitHeatmap) {
                 onShowGitHeatmap();
+              }
+            } else if (fc.name === "closeDisplay") {
+              // Close displayed panel
+              if (onCloseDisplay) {
+                const target = fc.args?.target || "all";
+                onCloseDisplay(target as "project" | "heatmap" | "all");
               }
             }
           }

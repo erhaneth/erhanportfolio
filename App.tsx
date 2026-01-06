@@ -69,6 +69,19 @@ const AppContent: React.FC = () => {
     setActiveProject(project);
   }, []);
 
+  // Handle AI-triggered close display
+  const handleCloseDisplay = useCallback(
+    (target: "project" | "heatmap" | "all") => {
+      if (target === "project" || target === "all") {
+        setActiveProject(null);
+      }
+      if (target === "heatmap" || target === "all") {
+        setShowGitHeatmap(false);
+      }
+    },
+    []
+  );
+
   // Context pill selections
   const [userMode, setUserMode] = useState<UserMode>(null);
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
@@ -102,7 +115,8 @@ const AppContent: React.FC = () => {
     userContext,
     handleProjectShow,
     () => setShowEmailModal(true),
-    () => setShowGitHeatmap(true)
+    () => setShowGitHeatmap(true),
+    handleCloseDisplay
   );
 
   // Live session hook - handles operator joining and messages
@@ -189,6 +203,7 @@ const AppContent: React.FC = () => {
     onSystemMessage: addSystemMessage,
     onResumeRequest: () => setShowEmailModal(true),
     onShowGitHeatmap: () => setShowGitHeatmap(true),
+    onCloseDisplay: handleCloseDisplay,
   });
 
   // Handle text message submission
@@ -352,7 +367,7 @@ const AppContent: React.FC = () => {
                       ? "Paste job description, company info..."
                       : "Questions? Topics you want to discuss..."
                   }
-                  className="w-full bg-[#020202]/50 border border-[#003B00] p-2 text-[11px] sm:text-xs text-[#00FF41] focus:outline-none focus:border-[#00FF41] h-18; resize-none mono placeholder:text-[#003B00]"
+                  className="w-full bg-[#020202]/50 border border-[#003B00] p-2 text-[11px] sm:text-xs text-[#00FF41] focus:outline-none focus:border-[#00FF41] h-20 resize-none mono placeholder:text-[#003B00]"
                 />
 
                 {/* Mission Briefing Button - Only for recruiters with job description */}

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
+import { notifyOperatorRequest, getSessionId } from "../services/slackService";
 import {
-  notifyOperatorRequest,
-  getSessionId,
-} from "../services/slackService";
-import { subscribeToOperatorMessages, ChatMessage } from "../services/firebaseService";
+  subscribeToOperatorMessages,
+  ChatMessage,
+} from "../services/firebaseService";
 
 interface OperatorStatusProps {
   conversationHistory: { role: string; content: string }[];
@@ -44,11 +44,14 @@ const OperatorStatus: React.FC<OperatorStatusProps> = ({
   useEffect(() => {
     if (!isOperatorMode) return;
 
-    const unsubscribe = subscribeToOperatorMessages(sessionId, (message: ChatMessage) => {
-      if (onOperatorMessage && message.content) {
-        onOperatorMessage(message.content);
+    const unsubscribe = subscribeToOperatorMessages(
+      sessionId,
+      (message: ChatMessage) => {
+        if (onOperatorMessage && message.content) {
+          onOperatorMessage(message.content);
+        }
       }
-    });
+    );
 
     return () => unsubscribe();
   }, [isOperatorMode, sessionId, onOperatorMessage]);
@@ -57,14 +60,18 @@ const OperatorStatus: React.FC<OperatorStatusProps> = ({
   useEffect(() => {
     const hasSeenTooltip = localStorage.getItem("operatorTooltipSeen");
     if (!hasSeenTooltip) {
-      const timer = setTimeout(() => {
+      let hideTimer: NodeJS.Timeout;
+      const showTimer = setTimeout(() => {
         setShowTooltip(true);
-        setTimeout(() => {
+        hideTimer = setTimeout(() => {
           setShowTooltip(false);
           localStorage.setItem("operatorTooltipSeen", "true");
         }, 4000);
       }, 3000);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(showTimer);
+        if (hideTimer) clearTimeout(hideTimer);
+      };
     }
   }, []);
 
@@ -97,6 +104,12 @@ const OperatorStatus: React.FC<OperatorStatusProps> = ({
     <div className="relative">
       {/* Status Indicator */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-label={
+          isOperatorMode ? "Disconnect from operator" : "Connect to operator"
+        }
+        aria-pressed={isOperatorMode}
         className={`glass-terminal border p-3 transition-all duration-300 cursor-pointer group ${
           isOperatorMode
             ? "border-[#00FF41] bg-[#00FF41]/10"
@@ -105,6 +118,12 @@ const OperatorStatus: React.FC<OperatorStatusProps> = ({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={handleConnect}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleConnect();
+          }
+        }}
       >
         {/* Main Status Row */}
         <div className="flex items-center justify-between">
@@ -131,13 +150,14 @@ const OperatorStatus: React.FC<OperatorStatusProps> = ({
             <span className="text-[10px] text-[#008F11] uppercase tracking-widest font-bold">
               {isOperatorMode ? (
                 <>
-                  UPLINK:{" "}
-                  <span className="text-[#00FF41]">ACTIVE</span>
+                  UPLINK: <span className="text-[#00FF41]">ACTIVE</span>
                 </>
               ) : (
                 <>
                   OPERATOR:{" "}
-                  <span className={isOnline ? "text-[#00FF41]" : "text-[#FF4141]"}>
+                  <span
+                    className={isOnline ? "text-[#00FF41]" : "text-[#FF4141]"}
+                  >
                     {isOnline ? "ONLINE" : "AWAY"}
                   </span>
                 </>

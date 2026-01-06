@@ -63,8 +63,25 @@ const showGitHeatmapTool: FunctionDeclaration = {
   parameters: {
     type: Type.OBJECT,
     description:
-      "Displays Erhan's Git contribution heatmap showing coding activity, languages used, and project distribution. Use this when users ask about coding activity, productivity, GitHub contributions, or want to see development statistics.",
+      "Displays Erhan's Git contribution heatmap showing coding activity, languages used, and project distribution. ONLY use this when the user EXPLICITLY requests to see the chart, stats, or heatmap. Do NOT auto-trigger - instead, offer to show it and wait for user confirmation.",
     properties: {},
+  },
+};
+
+const closeDisplayTool: FunctionDeclaration = {
+  name: "closeDisplay",
+  parameters: {
+    type: Type.OBJECT,
+    description:
+      "Closes the currently displayed panel (project details or GitHub heatmap). Use when user says things like 'close this', 'close it', 'hide this', 'dismiss', 'go back', or 'close the project/heatmap'.",
+    properties: {
+      target: {
+        type: Type.STRING,
+        description:
+          "What to close: 'project' for project panel, 'heatmap' for GitHub heatmap, or 'all' for everything",
+      },
+    },
+    required: ["target"],
   },
 };
 
@@ -103,6 +120,7 @@ export const generateResponse = async (
               unlockSecretProjectTool,
               requestResumeEmailTool,
               showGitHeatmapTool,
+              closeDisplayTool,
             ],
           },
         ],
