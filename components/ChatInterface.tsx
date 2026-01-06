@@ -119,6 +119,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
       <div
         ref={scrollRef}
+        role="log"
+        aria-live="polite"
+        aria-label="Chat messages"
         className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 lg:space-y-8 mono scroll-smooth"
       >
         {messages.map((msg, index) => {
@@ -308,6 +311,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 onChange={(e) => setInput(e.target.value)}
                 disabled={isLoading}
                 placeholder={translate("chat.placeholder")}
+                aria-label="Type your message"
                 className="flex-1 bg-transparent border-none py-2 text-xs sm:text-sm text-[#00FF41] focus:outline-none placeholder:text-[#003B00] mono caret-[#00FF41]"
               />
 
@@ -327,6 +331,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               <button
                 type="submit"
                 disabled={!input.trim() || isLoading}
+                aria-label="Send message"
                 className="group p-2 text-[#008F11] hover:text-[#00FF41] transition-all disabled:opacity-0"
               >
                 <svg
