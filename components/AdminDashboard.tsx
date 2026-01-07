@@ -1,6 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { getActiveSessions, getSessionConversation, subscribeToConversation, SessionInfo } from "../services/adminService";
-import { setSessionLive, sendOperatorMessage, setOperatorTyping } from "../services/liveSessionService";
+import {
+  getActiveSessions,
+  getSessionConversation,
+  subscribeToConversation,
+  SessionInfo,
+} from "../services/adminService";
+import {
+  setSessionLive,
+  sendOperatorMessage,
+  setOperatorTyping,
+} from "../services/liveSessionService";
 import { useNavigate } from "react-router-dom";
 
 interface ExpandedSession extends SessionInfo {
@@ -27,7 +36,9 @@ export const AdminDashboard: React.FC = () => {
       // Merge with existing state to preserve isExpanded, conversation, messageInput
       setSessions((prev) => {
         return data.map((newSession) => {
-          const existingSession = prev.find((s) => s.sessionId === newSession.sessionId);
+          const existingSession = prev.find(
+            (s) => s.sessionId === newSession.sessionId
+          );
           if (existingSession) {
             return {
               ...newSession,
@@ -178,18 +189,12 @@ export const AdminDashboard: React.FC = () => {
       // Send the message
       await sendOperatorMessage(sessionId, message);
 
-      // Clear input and refresh conversation
+      // Clear input and optimistically mark session live; conversation will update via subscription
       setSessions((prev) =>
         prev.map((s) =>
-          s.sessionId === sessionId ? { ...s, messageInput: "" } : s
-        )
-      );
-
-      // Reload conversation
-      const conversation = await getSessionConversation(sessionId);
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.sessionId === sessionId ? { ...s, conversation, isLive: true } : s
+          s.sessionId === sessionId
+            ? { ...s, messageInput: "", isLive: true }
+            : s
         )
       );
     } catch (err) {
@@ -216,7 +221,9 @@ export const AdminDashboard: React.FC = () => {
       <div className="min-h-screen bg-[#0a0e27] text-[#00FF41] flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="border border-[#00FF41] rounded p-8 backdrop-blur-sm">
-            <h1 className="text-2xl font-bold mb-2 text-center">[ADMIN_ACCESS]</h1>
+            <h1 className="text-2xl font-bold mb-2 text-center">
+              [ADMIN_ACCESS]
+            </h1>
             <p className="text-[#00FF41]/70 text-center mb-6">
               Neural Interface Authentication Required
             </p>
@@ -275,9 +282,7 @@ export const AdminDashboard: React.FC = () => {
             [SCANNING_MAINFRAME]...
           </p>
         )}
-        {error && (
-          <p className="text-center text-red-500 mb-4">{error}</p>
-        )}
+        {error && <p className="text-center text-red-500 mb-4">{error}</p>}
 
         {/* Sessions List */}
         {sessions.length === 0 && !loading ? (
@@ -330,7 +335,10 @@ export const AdminDashboard: React.FC = () => {
                       <div className="flex items-center gap-4 text-xs text-[#00FF41]/70">
                         <span>Messages: {session.messageCount}</span>
                         <span>
-                          Last: {new Date(session.lastMessageTime).toLocaleTimeString()}
+                          Last:{" "}
+                          {new Date(
+                            session.lastMessageTime
+                          ).toLocaleTimeString()}
                         </span>
                       </div>
                     </div>
@@ -380,7 +388,12 @@ export const AdminDashboard: React.FC = () => {
                             }`}
                           >
                             <strong className="text-[#00FF41]">
-                              {msg.role === "visitor" ? "VISITOR" : msg.role === "operator" ? "ERHAN" : msg.role.toUpperCase()}:
+                              {msg.role === "visitor"
+                                ? "VISITOR"
+                                : msg.role === "operator"
+                                ? "ERHAN"
+                                : msg.role.toUpperCase()}
+                              :
                             </strong>{" "}
                             <span className="text-[#00FF41]/80">
                               {msg.content?.substring(0, 300)}
@@ -401,7 +414,10 @@ export const AdminDashboard: React.FC = () => {
                         type="text"
                         value={session.messageInput || ""}
                         onChange={(e) =>
-                          handleMessageInputChange(session.sessionId, e.target.value)
+                          handleMessageInputChange(
+                            session.sessionId,
+                            e.target.value
+                          )
                         }
                         onKeyDown={(e) => {
                           if (e.key === "Enter" && !e.shiftKey) {

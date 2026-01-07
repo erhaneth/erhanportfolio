@@ -5,6 +5,10 @@
 [build.environment]
   NODE_VERSION = "18"
 
+# Exclude Firebase client API key from secrets scanning (it's designed to be public)
+[secrets-scanning]
+  omittedValues = ["AIzaSyCoH2UrO8xkvPlmzVeTZKer9-ILNoV4cFE"]
+
 [dev]
   command = "npm run dev"
   targetPort = 3000
