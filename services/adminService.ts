@@ -1,8 +1,8 @@
 // Admin Dashboard Service
 // Fetches active sessions and allows operator control
 
-import { ref, get, query, orderByChild, limitToLast } from "firebase/database";
-import { database } from "./firebaseService";
+import { ref, get, onValue, off } from "firebase/database";
+import { database, ChatMessage } from "./firebaseService";
 
 export interface SessionInfo {
   sessionId: string;
@@ -106,4 +106,28 @@ export const getSessionConversation = async (
     console.error("[AdminService] Failed to fetch conversation:", error);
     return [];
   }
+};
+
+// Subscribe to conversation updates (real-time)
+export const subscribeToConversation = (
+  sessionId: string,
+  onUpdate: (messages: ChatMessage[]) => void
+): (() => void) => {
+  const messagesRef = ref(database, `messages/${sessionId}`);
+
+  onValue(messagesRef, (snapshot) => {
+    if (!snapshot.exists()) {
+      onUpdate([]);
+      return;
+    }
+
+    const messages: ChatMessage[] = [];
+    snapshot.forEach((msgSnap) => {
+      messages.push(msgSnap.val() as ChatMessage);
+    });
+
+    onUpdate(messages.sort((a, b) => a.timestamp - b.timestamp));
+  });
+
+  return () => off(messagesRef);
 };

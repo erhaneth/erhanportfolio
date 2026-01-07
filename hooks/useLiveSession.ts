@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   subscribeToLiveSession,
   subscribeToOperatorMessages,
+  subscribeToOperatorTyping,
   sendVisitorMessage,
   notifyHotLead,
   getCurrentSessionId,
@@ -15,6 +16,7 @@ interface UseLiveSessionReturn {
   isLiveMode: boolean;
   operatorJoinedAt: number | null;
   sessionId: string;
+  isOperatorTyping: boolean;
   sendMessage: (content: string) => Promise<void>;
   checkAndNotify: (messages: { role: string; content: string }[]) => Promise<void>;
 }
@@ -25,6 +27,7 @@ export const useLiveSession = (
 ): UseLiveSessionReturn => {
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [operatorJoinedAt, setOperatorJoinedAt] = useState<number | null>(null);
+  const [isOperatorTyping, setIsOperatorTyping] = useState(false);
   const [sessionId] = useState(getCurrentSessionId);
   const hasNotifiedJoin = useRef(false);
   const hasNotifiedSlack = useRef(false);
@@ -62,6 +65,15 @@ export const useLiveSession = (
 
     return unsubscribe;
   }, [sessionId, isLiveMode, onOperatorMessage]);
+
+  // Subscribe to operator typing status when in live mode
+  useEffect(() => {
+    if (!isLiveMode) return;
+
+    const unsubscribe = subscribeToOperatorTyping(sessionId, setIsOperatorTyping);
+
+    return unsubscribe;
+  }, [sessionId, isLiveMode]);
 
   // Send message to Firebase for operator
   const sendMessage = useCallback(
@@ -107,6 +119,7 @@ export const useLiveSession = (
     isLiveMode,
     operatorJoinedAt,
     sessionId,
+    isOperatorTyping,
     sendMessage,
     checkAndNotify,
   };

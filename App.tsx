@@ -1,4 +1,11 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  lazy,
+  Suspense,
+} from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Project } from "./types";
 import { PORTFOLIO_DATA } from "./constants";
@@ -17,7 +24,13 @@ import { useMessages } from "./hooks/useMessages";
 import { useVoiceChat } from "./hooks/useVoiceChat";
 import { sendResume } from "./services/emailService";
 import { useLanguage } from "./contexts/LanguageContext";
-import { AdminDashboard } from "./components/AdminDashboard";
+
+// Lazy load AdminDashboard since it's rarely accessed
+const AdminDashboard = lazy(() =>
+  import("./components/AdminDashboard").then((m) => ({
+    default: m.AdminDashboard,
+  }))
+);
 
 // Load test utilities in development only
 if (import.meta.env.DEV) {
@@ -69,6 +82,19 @@ const AppContent: React.FC = () => {
     setActiveProject(project);
   }, []);
 
+  // Handle AI-triggered close display
+  const handleCloseDisplay = useCallback(
+    (target: "project" | "heatmap" | "all") => {
+      if (target === "project" || target === "all") {
+        setActiveProject(null);
+      }
+      if (target === "heatmap" || target === "all") {
+        setShowGitHeatmap(false);
+      }
+    },
+    []
+  );
+
   // Context pill selections
   const [userMode, setUserMode] = useState<UserMode>(null);
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
@@ -102,12 +128,14 @@ const AppContent: React.FC = () => {
     userContext,
     handleProjectShow,
     () => setShowEmailModal(true),
-    () => setShowGitHeatmap(true)
+    () => setShowGitHeatmap(true),
+    handleCloseDisplay
   );
 
   // Live session hook - handles operator joining and messages
   const {
     isLiveMode,
+    isOperatorTyping,
     sendMessage: sendToOperator,
     checkAndNotify,
   } = useLiveSession(
@@ -188,6 +216,7 @@ const AppContent: React.FC = () => {
     onSystemMessage: addSystemMessage,
     onResumeRequest: () => setShowEmailModal(true),
     onShowGitHeatmap: () => setShowGitHeatmap(true),
+    onCloseDisplay: handleCloseDisplay,
   });
 
   // Handle text message submission
@@ -351,7 +380,7 @@ const AppContent: React.FC = () => {
                       ? "Paste job description, company info..."
                       : "Questions? Topics you want to discuss..."
                   }
-                  className="w-full bg-[#020202]/50 border border-[#003B00] p-2 text-[11px] sm:text-xs text-[#00FF41] focus:outline-none focus:border-[#00FF41] h-18; resize-none mono placeholder:text-[#003B00]"
+                  className="w-full bg-[#020202]/50 border border-[#003B00] p-2 text-[11px] sm:text-xs text-[#00FF41] focus:outline-none focus:border-[#00FF41] h-20 resize-none mono placeholder:text-[#003B00]"
                 />
 
                 {/* Mission Briefing Button - Only for recruiters with job description */}
@@ -422,6 +451,7 @@ const AppContent: React.FC = () => {
             aiVolume={aiVolume}
             isAiTalking={isAiTalking}
             isLiveMode={isLiveMode}
+            isOperatorTyping={isOperatorTyping}
           />
         </section>
 
@@ -577,11 +607,28 @@ const AppContent: React.FC = () => {
     </div>
   );
 };
+
+// Loading fallback for lazy-loaded components
+const AdminLoading = () => (
+  <div className="min-h-screen bg-[#0a0e27] text-[#00FF41] flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-pulse text-xl">[LOADING_ADMIN_MODULE...]</div>
+    </div>
+  </div>
+);
+
 const App: React.FC = () => {
   return (
     <Router>
       <Routes>
-        <Route path="/admin" element={<AdminDashboard />} />
+        <Route
+          path="/admin3873"
+          element={
+            <Suspense fallback={<AdminLoading />}>
+              <AdminDashboard />
+            </Suspense>
+          }
+        />
         <Route path="*" element={<AppContent />} />
       </Routes>
     </Router>

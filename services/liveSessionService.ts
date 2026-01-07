@@ -1,7 +1,7 @@
 // Live Session Service
 // Handles the live chat mode when Erhan joins the conversation
 
-import { ref, onValue, off, set } from "firebase/database";
+import { ref, onValue, off, set, get, update } from "firebase/database";
 import { database, storeMessage } from "./firebaseService";
 import { getSessionId } from "./slackService";
 
@@ -80,6 +80,48 @@ export const setSessionLive = async (
   });
 };
 
+// Set operator typing status
+export const setOperatorTyping = async (
+  sessionId: string,
+  isTyping: boolean
+): Promise<void> => {
+  const typingRef = ref(database, `sessions/${sessionId}/typing`);
+  await set(typingRef, {
+    isTyping,
+    updatedAt: Date.now(),
+  });
+};
+
+// Subscribe to operator typing status
+export const subscribeToOperatorTyping = (
+  sessionId: string,
+  onTypingChange: (isTyping: boolean) => void
+): (() => void) => {
+  const typingRef = ref(database, `sessions/${sessionId}/typing`);
+
+  onValue(typingRef, (snapshot) => {
+    const data = snapshot.val();
+    // Only show typing if updated within last 3 seconds
+    if (data && data.isTyping && Date.now() - data.updatedAt < 3000) {
+      onTypingChange(true);
+    } else {
+      onTypingChange(false);
+    }
+  });
+
+  return () => off(typingRef);
+};
+
+// Send operator message to Firebase (from admin dashboard)
+export const sendOperatorMessage = async (
+  sessionId: string,
+  content: string
+): Promise<void> => {
+  await storeMessage(sessionId, "operator", content);
+  // Clear typing indicator after sending
+  await setOperatorTyping(sessionId, false);
+};
+
 // Send visitor message to Firebase (for operator to see)
 export const sendVisitorMessage = async (
   sessionId: string,
@@ -100,6 +142,37 @@ export const notifyHotLead = async (
   intentSummary: string,
   signals: string[]
 ): Promise<boolean> => {
+  // Create or update session in Firebase (use update to avoid overwriting existing session)
+  const sessionRef = ref(database, `sessions/${sessionId}`);
+  const now = Date.now();
+  const existingSession = await get(sessionRef);
+
+  if (existingSession.exists()) {
+    // Update existing session without overwriting operatorMode
+    await update(sessionRef, {
+      lastActivity: now,
+      context: intentSummary,
+    });
+  } else {
+    // Create new session
+    await set(sessionRef, {
+      id: sessionId,
+      createdAt: now,
+      lastActivity: now,
+      operatorMode: false,
+      context: intentSummary,
+    });
+  }
+
+  // Store recent conversation history in Firebase
+  for (const msg of conversationHistory.slice(-5)) {
+    await storeMessage(
+      sessionId,
+      msg.role === "user" ? "visitor" : "ai",
+      msg.content
+    );
+  }
+
   const historyText = conversationHistory
     .slice(-5)
     .map(
@@ -112,7 +185,11 @@ export const notifyHotLead = async (
 
   // Use simple text format for maximum compatibility with Slack webhooks
   const payload = {
-    text: `🔥 *Hot Lead Detected*\n\n*Session:* \`${sessionId}\`\n*Time:* ${new Date().toLocaleString()}\n\n*Intent:* ${intentSummary}\n*Signals:* ${signals.slice(0, 3).join(", ")}\n\n*Conversation:*\n${historyText}\n\n_Reply with_ \`/join ${sessionId}\` _to join or_ \`[${sessionId}] message\` _to send_`,
+    text: `🔥 *Hot Lead Detected*\n\n*Session:* \`${sessionId}\`\n*Time:* ${new Date().toLocaleString()}\n\n*Intent:* ${intentSummary}\n*Signals:* ${signals
+      .slice(0, 3)
+      .join(
+        ", "
+      )}\n\n*Conversation:*\n${historyText}\n\n_Reply with_ \`/join ${sessionId}\` _to join or_ \`[${sessionId}] message\` _to send_`,
   };
 
   try {
@@ -121,11 +198,11 @@ export const notifyHotLead = async (
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    
+
     if (!response.ok) {
       console.error("[LiveSession] Slack webhook failed:", response.status);
     }
-    
+
     return response.ok;
   } catch (error) {
     console.error("[LiveSession] Failed to notify Slack:", error);
