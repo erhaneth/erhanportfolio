@@ -14,7 +14,7 @@ import {
 } from "firebase/database";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCoH2UrO8xkvPlmzVeTZKer9-ILNoV4cFE",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: "portfolio-chat-aab82.firebaseapp.com",
   databaseURL: "https://portfolio-chat-aab82-default-rtdb.firebaseio.com",
   projectId: "portfolio-chat-aab82",
@@ -51,7 +51,7 @@ export const createOrUpdateSession = async (
 ): Promise<void> => {
   const sessionRef = ref(database, `sessions/${sessionId}`);
   const now = Date.now();
-  
+
   await set(sessionRef, {
     id: sessionId,
     createdAt: now,
@@ -70,18 +70,18 @@ export const storeMessage = async (
   try {
     const messagesRef = ref(database, `messages/${sessionId}`);
     const newMessageRef = push(messagesRef);
-    
+
     await set(newMessageRef, {
       sessionId,
       role,
       content,
       timestamp: Date.now(),
     });
-    
+
     // Update session last activity
     const sessionRef = ref(database, `sessions/${sessionId}/lastActivity`);
     await set(sessionRef, Date.now());
-    
+
     return newMessageRef.key;
   } catch (error) {
     console.error("Failed to store message:", error);
@@ -124,9 +124,9 @@ export const subscribeToOperatorMessages = (
   callback: (message: ChatMessage) => void
 ): (() => void) => {
   const messagesRef = ref(database, `messages/${sessionId}`);
-  
+
   let lastTimestamp = Date.now();
-  
+
   const unsubscribe = onValue(messagesRef, (snapshot) => {
     snapshot.forEach((child) => {
       const msg = child.val();
@@ -151,20 +151,24 @@ export const checkForOperatorMessages = async (
 ): Promise<ChatMessage[]> => {
   return new Promise((resolve) => {
     const messagesRef = ref(database, `messages/${sessionId}`);
-    
-    onValue(messagesRef, (snapshot) => {
-      const messages: ChatMessage[] = [];
-      snapshot.forEach((child) => {
-        const msg = child.val();
-        if (msg.role === "operator" && msg.timestamp > sinceTimestamp) {
-          messages.push({
-            id: child.key || undefined,
-            ...msg,
-          });
-        }
-      });
-      resolve(messages);
-    }, { onlyOnce: true });
+
+    onValue(
+      messagesRef,
+      (snapshot) => {
+        const messages: ChatMessage[] = [];
+        snapshot.forEach((child) => {
+          const msg = child.val();
+          if (msg.role === "operator" && msg.timestamp > sinceTimestamp) {
+            messages.push({
+              id: child.key || undefined,
+              ...msg,
+            });
+          }
+        });
+        resolve(messages);
+      },
+      { onlyOnce: true }
+    );
   });
 };
 
