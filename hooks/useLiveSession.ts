@@ -91,7 +91,6 @@ export const useLiveSession = (
       // Notify Slack after exactly 2 user messages (first check only)
       if (userMsgCount === 2 && !hasNotifiedSlack.current) {
         hasNotifiedSlack.current = true;
-        console.log("[LiveSession] 2 messages detected, notifying Slack");
 
         try {
           // Get last few messages for context
