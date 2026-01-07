@@ -1,4 +1,11 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  lazy,
+  Suspense,
+} from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Project } from "./types";
 import { PORTFOLIO_DATA } from "./constants";
@@ -17,7 +24,13 @@ import { useMessages } from "./hooks/useMessages";
 import { useVoiceChat } from "./hooks/useVoiceChat";
 import { sendResume } from "./services/emailService";
 import { useLanguage } from "./contexts/LanguageContext";
-import { AdminDashboard } from "./components/AdminDashboard";
+
+// Lazy load AdminDashboard since it's rarely accessed
+const AdminDashboard = lazy(() =>
+  import("./components/AdminDashboard").then((m) => ({
+    default: m.AdminDashboard,
+  }))
+);
 
 // Load test utilities in development only
 if (import.meta.env.DEV) {
@@ -594,11 +607,28 @@ const AppContent: React.FC = () => {
     </div>
   );
 };
+
+// Loading fallback for lazy-loaded components
+const AdminLoading = () => (
+  <div className="min-h-screen bg-[#0a0e27] text-[#00FF41] flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-pulse text-xl">[LOADING_ADMIN_MODULE...]</div>
+    </div>
+  </div>
+);
+
 const App: React.FC = () => {
   return (
     <Router>
       <Routes>
-        <Route path="/admin3873" element={<AdminDashboard />} />
+        <Route
+          path="/admin3873"
+          element={
+            <Suspense fallback={<AdminLoading />}>
+              <AdminDashboard />
+            </Suspense>
+          }
+        />
         <Route path="*" element={<AppContent />} />
       </Routes>
     </Router>
