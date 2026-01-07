@@ -1,7 +1,7 @@
 // Live Session Service
 // Handles the live chat mode when Erhan joins the conversation
 
-import { ref, onValue, off, set } from "firebase/database";
+import { ref, onValue, off, set, get, update } from "firebase/database";
 import { database, storeMessage } from "./firebaseService";
 import { getSessionId } from "./slackService";
 
@@ -142,16 +142,27 @@ export const notifyHotLead = async (
   intentSummary: string,
   signals: string[]
 ): Promise<boolean> => {
-  // Create session in Firebase first
+  // Create or update session in Firebase (use update to avoid overwriting existing session)
   const sessionRef = ref(database, `sessions/${sessionId}`);
   const now = Date.now();
-  await set(sessionRef, {
-    id: sessionId,
-    createdAt: now,
-    lastActivity: now,
-    operatorMode: false,
-    context: intentSummary,
-  });
+  const existingSession = await get(sessionRef);
+
+  if (existingSession.exists()) {
+    // Update existing session without overwriting operatorMode
+    await update(sessionRef, {
+      lastActivity: now,
+      context: intentSummary,
+    });
+  } else {
+    // Create new session
+    await set(sessionRef, {
+      id: sessionId,
+      createdAt: now,
+      lastActivity: now,
+      operatorMode: false,
+      context: intentSummary,
+    });
+  }
 
   // Store recent conversation history in Firebase
   for (const msg of conversationHistory.slice(-5)) {
