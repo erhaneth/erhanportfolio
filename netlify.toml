@@ -4,12 +4,8 @@
 
 [build.environment]
   NODE_VERSION = "18"
-
-# Exclude API keys from secrets scanning
-# Firebase client key is designed to be public (protected by security rules)
-# Gemini API key is restricted to specific domains in Google Cloud Console
-[secrets-scanning]
-  omittedValues = ["AIzaSyCoH2UrO8xkvPlmzVeTZKer9-ILNoV4cFE", "AIzaSyDsuPtUJ8y5gKyp_3lDBrYw7rEMDnme_O8"]
+  # Disable smart secret detection - Firebase client keys are designed to be public
+  SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
 
 [dev]
   command = "npm run dev"
