@@ -7,9 +7,9 @@
 
 # Exclude API keys from secrets scanning
 # Firebase client key is designed to be public (protected by security rules)
-# Gemini API key is used client-side for this demo (consider moving to serverless function for production)
+# Gemini API key is restricted to specific domains in Google Cloud Console
 [secrets-scanning]
-  omittedValues = ["AIzaSyCoH2UrO8xkvPlmzVeTZKer9-ILNoV4cFE", "AIzaSyAeY9XD-BZvv5XShMol-IGAxC3KL_scgcI"]
+  omittedValues = ["AIzaSyCoH2UrO8xkvPlmzVeTZKer9-ILNoV4cFE", "AIzaSyDsuPtUJ8y5gKyp_3lDBrYw7rEMDnme_O8"]
 
 [dev]
   command = "npm run dev"
