@@ -242,18 +242,13 @@ export const useMessages = (
         };
 
         // Build final messages array and update state
-        let finalMessages: Message[] = [];
-        setMessages((prev) => {
-          finalMessages = [...prev, assistantMsg];
-          return finalMessages;
-        });
+        // Use a ref pattern to capture the updated messages reliably
+        const updatedMessages = [...messages, userMsg, assistantMsg];
+        setMessages(updatedMessages);
 
-        // Call onComplete callback with updated messages (fire and forget)
+        // Call onComplete callback with updated messages
         if (onComplete) {
-          // Use setTimeout to ensure state has updated
-          setTimeout(() => {
-            onComplete(finalMessages);
-          }, 0);
+          onComplete(updatedMessages);
         }
 
         if (functionCalls && functionCalls.length > 0) {

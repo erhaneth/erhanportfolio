@@ -81,10 +81,27 @@ const closeDisplayTool: FunctionDeclaration = {
   },
 };
 
+// Simple cache for development to avoid hitting rate limits
+const responseCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
+
+const getCacheKey = (messages: { role: string; content: string }[], userContext?: string) => {
+  const lastMessage = messages[messages.length - 1]?.content || "";
+  return `${lastMessage.substring(0, 100)}_${userContext?.substring(0, 50) || ""}`;
+};
+
 export const generateResponse = async (
   messages: { role: "user" | "assistant"; content: string }[],
   userContext?: string
 ) => {
+  // Check cache first (only in development or if same exact message)
+  const cacheKey = getCacheKey(messages, userContext);
+  const cached = responseCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    console.log("[Gemini] Using cached response");
+    return cached.data;
+  }
+
   try {
     // Call serverless function instead of direct API
     const response = await fetch("/.netlify/functions/gemini-chat", {
@@ -101,7 +118,7 @@ export const generateResponse = async (
     const data = await response.json();
 
     // Return in same format as direct API call
-    return {
+    const result = {
       candidates: [
         {
           content: {
@@ -116,6 +133,11 @@ export const generateResponse = async (
         },
       ],
     };
+
+    // Cache the response
+    responseCache.set(cacheKey, { data: result, timestamp: Date.now() });
+
+    return result;
   } catch (error: any) {
     if (error?.message) {
       throw new Error(`Gemini API error: ${error.message}`);
