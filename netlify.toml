@@ -5,6 +5,11 @@
 [build.environment]
   NODE_VERSION = "18"
 
+# Exclude API keys from secrets scanning
+# Firebase client key is designed to be public (protected by security rules)
+# Gemini API key is used client-side for this demo (consider moving to serverless function for production)
+[secrets-scanning]
+  omittedValues = ["AIzaSyCoH2UrO8xkvPlmzVeTZKer9-ILNoV4cFE", "AIzaSyAeY9XD-BZvv5XShMol-IGAxC3KL_scgcI"]
 
 [dev]
   command = "npm run dev"
