@@ -26,6 +26,7 @@ interface UseVoiceChatOptions {
   onSystemMessage?: (content: string) => void;
   onResumeRequest?: () => void;
   onShowGitHeatmap?: () => void;
+  onCloseDisplay?: (target: "project" | "heatmap" | "all") => void;
 }
 
 interface UseVoiceChatReturn {
@@ -51,6 +52,7 @@ export const useVoiceChat = (
     onSystemMessage,
     onResumeRequest,
     onShowGitHeatmap,
+    onCloseDisplay,
   } = options;
 
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
@@ -444,6 +446,23 @@ export const useVoiceChat = (
                         name: fc.name,
                         response: {
                           result: "Git heatmap displayed successfully.",
+                        },
+                      },
+                    })
+                  );
+                } else if (fc.name === "closeDisplay") {
+                  // Close displayed panel
+                  if (onCloseDisplay) {
+                    const target = fc.args?.target || "all";
+                    onCloseDisplay(target as "project" | "heatmap" | "all");
+                  }
+                  sessionPromise.then((s) =>
+                    s.sendToolResponse({
+                      functionResponses: {
+                        id: fc.id,
+                        name: fc.name,
+                        response: {
+                          result: "Display closed successfully.",
                         },
                       },
                     })
