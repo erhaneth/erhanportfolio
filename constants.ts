@@ -85,23 +85,60 @@ export const PORTFOLIO_DATA: PortfolioData = {
       impactTr:
         "Chrome Web Store'da 5.0★ puanını koruyarak, sert engelleme mantığı ve akıllı davranışsal pekiştirme kombinasyonuyla kullanıcıların dijital dikkat dağıtıcılarını aşmalarına başarıyla yardımcı oluyor.",
     },
-    // TODO: Add secret project to replace Project Omega - maybe Zion Mainframe porfolito which is this project so that we can make visior or recruiter laugh
     {
-      id: "secret-project-omega",
-      title: "[CLASSIFIED] Project Omega",
-      titleTr: "[GİZLİ] Proje Omega",
+      id: "love-letters",
+      title: "Love Letters: Interactive Museum Exhibit",
+      titleTr: "Love Letters: Etkileşimli Müze Sergisi",
       description:
-        "A highly experimental brain-computer interface simulation using neuro-symbolic AI.",
+        "A bilingual (English/Spanish) digital exhibit for the Museum of Life and Science, enabling visitors to write and draw letters to local climate heroes. Built with Next.js, Electron, and Konva.js, featuring a custom drawing interface, hero carousel, and SharePoint integration for secure cloud storage.",
       descriptionTr:
-        "Nöro-sembolik yapay zeka kullanan son derece deneysel bir beyin-bilgisayar arayüzü simülasyonu.",
-      technologies: ["TensorFlow", "C++", "WebAssembly"],
-      role: "Researcher",
-      roleTr: "Araştırmacı",
-      imageUrl: "https://picsum.photos/seed/secret/800/450",
-      codeSnippet: "// Restricted access to source code",
-      impact: "Won 'Innovation of the Year' at the 2023 NeuroTech Summit.",
+        "Museum of Life and Science için İngilizce/İspanyolca iki dilli dijital sergi. Ziyaretçilerin yerel iklim kahramanlarına mektup yazıp çizim yapmasını sağlar. Next.js, Electron ve Konva.js ile geliştirildi; özel çizim arayüzü, kahraman karuseli ve güvenli bulut depolama için SharePoint entegrasyonu içerir.",
+      technologies: [
+        "Next.js",
+        "TypeScript",
+        "Electron",
+        "Konva.js",
+        "Tailwind CSS",
+        "SharePoint API",
+      ],
+      role: "Software Developer",
+      roleTr: "Yazılım Geliştirici",
+      imageUrl: "/projects/love-letters.png",
+      codeSnippet:
+        "const drawing = new Konva.Line({\n  points: [x1, y1, x2, y2],\n  stroke: '#000',\n  strokeWidth: 4,\n  lineCap: 'round',\n  lineJoin: 'round',\n});",
+      impact:
+        "Enabled thousands of museum visitors to send digital letters to climate heroes, fostering climate awareness and community engagement. Delivered a robust, accessible, and multilingual experience for a diverse audience.",
       impactTr:
-        "2023 NeuroTech Zirvesi'nde 'Yılın İnovasyonu' ödülünü kazandı.",
+        "Binlerce müze ziyaretçisinin iklim kahramanlarına dijital mektup göndermesini sağladı; iklim farkındalığı ve topluluk katılımı artırıldı. Farklı kitleler için sağlam, erişilebilir ve çok dilli bir deneyim sunuldu.",
+    },
+    {
+      id: "zion-mainframe",
+      title: "Zion Mainframe: AI Portfolio",
+      titleTr: "Zion Mainframe: Yapay Zeka Portföyü",
+      description:
+        "A conversational AI portfolio that you're experiencing right now. Features real-time voice chat, live operator takeover via Slack, hot lead detection, and a cyberpunk terminal aesthetic. Yes, the AI you're talking to is showcasing itself.",
+      descriptionTr:
+        "Şu anda deneyimlediğiniz yapay zeka destekli konuşmalı portföy. Gerçek zamanlı sesli sohbet, Slack üzerinden canlı operatör devralma, potansiyel müşteri tespiti ve cyberpunk terminal estetiği içerir. Evet, konuştuğunuz yapay zeka kendini sergiliyor.",
+      technologies: [
+        "React",
+        "TypeScript",
+        "Vite",
+        "Google Gemini AI",
+        "Firebase Realtime DB",
+        "Slack API",
+        "Tailwind CSS",
+        "Netlify Functions",
+      ],
+      role: "Creator & Developer",
+      roleTr: "Yaratıcı & Geliştirici",
+      imageUrl: "/projects/zion-mainframe.png",
+      githubUrl: "https://github.com/erhaneth/erhan-ai-portfolio",
+      codeSnippet:
+        "// You're looking at the source code of this very conversation\nconst response = await generateResponse(messages, userContext);\nconst functionCalls = response.candidates?.[0]?.content?.parts\n  .filter((part) => part.functionCall)\n  .map((part) => part.functionCall);",
+      impact:
+        "Built a portfolio that interviews itself. Features voice-to-voice conversations, real-time Slack notifications for hot leads, operator takeover mode, and email alerts. If you're reading this, the AI successfully showcased its own project.",
+      impactTr:
+        "Kendisiyle röportaj yapan bir portföy oluşturuldu. Sesli konuşmalar, potansiyel müşteriler için gerçek zamanlı Slack bildirimleri, operatör devralma modu ve e-posta uyarıları içerir. Bunu okuyorsanız, yapay zeka kendi projesini başarıyla sergiledi.",
     },
   ],
 };

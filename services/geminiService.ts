@@ -28,7 +28,7 @@ const showProjectTool: FunctionDeclaration = {
       projectId: {
         type: Type.STRING,
         description:
-          "The ID of the project to display. Options: tip-kurdish-keyboard, locked-in, secret-project-omega",
+          "The ID of the project to display. Options: tip-kurdish-keyboard, locked-in, love-letters, zion-mainframe",
       },
     },
     required: ["projectId"],
