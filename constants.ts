@@ -104,7 +104,7 @@ export const PORTFOLIO_DATA: PortfolioData = {
       role: "Software Developer",
       roleTr: "Yazılım Geliştirici",
       imageUrl: "/projects/love-letters.png",
-      videoUrl: "/projects/love-letters-demo.mp4",
+      videoUrl: "/projects/love-letters-demo-compressed.mp4",
       codeSnippet:
         "const drawing = new Konva.Line({\n  points: [x1, y1, x2, y2],\n  stroke: '#000',\n  strokeWidth: 4,\n  lineCap: 'round',\n  lineJoin: 'round',\n});",
       impact:
