@@ -6,42 +6,30 @@ import { useLanguage } from "../contexts/LanguageContext";
 import ReactMarkdown from "react-markdown";
 import VoiceButton from "./VoiceButton";
 
-// Custom hook for resizable container
-const useResizable = (initialHeight: number, minHeight: number, maxHeight: number) => {
-  const [height, setHeight] = useState(initialHeight);
-  const [isResizing, setIsResizing] = useState(false);
-  const startY = useRef(0);
-  const startHeight = useRef(0);
+// Drag-to-resize hook for mobile chat
+const useResizable = (initial: number, min: number, max: number) => {
+  const [height, setHeight] = useState(initial);
+  const [isDragging, setIsDragging] = useState(false);
+  const start = useRef({ y: 0, h: 0 });
 
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-    startY.current = e.clientY;
-    startHeight.current = height;
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  }, [height]);
-
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!isResizing) return;
-    const delta = startY.current - e.clientY; // Negative = dragging down, Positive = dragging up
-    const newHeight = Math.min(maxHeight, Math.max(minHeight, startHeight.current + delta));
-    setHeight(newHeight);
-  }, [isResizing, minHeight, maxHeight]);
-
-  const handlePointerUp = useCallback((e: React.PointerEvent) => {
-    setIsResizing(false);
-    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-  }, []);
-
-  return {
-    height,
-    isResizing,
-    handlers: {
-      onPointerDown: handlePointerDown,
-      onPointerMove: handlePointerMove,
-      onPointerUp: handlePointerUp,
+  const handlers = {
+    onPointerDown: (e: React.PointerEvent) => {
+      e.preventDefault();
+      start.current = { y: e.clientY, h: height };
+      setIsDragging(true);
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      if (!isDragging) return;
+      setHeight(Math.min(max, Math.max(min, start.current.h + start.current.y - e.clientY)));
+    },
+    onPointerUp: (e: React.PointerEvent) => {
+      setIsDragging(false);
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     },
   };
+
+  return { height, isDragging, handlers };
 };
 
 interface ChatInterfaceProps {
@@ -93,7 +81,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   }, []);
 
   // Resizable chat - min 200px, max 85vh
-  const { height, isResizing, handlers } = useResizable(
+  const { height, isDragging, handlers } = useResizable(
     400, // initial height
     200, // min height
     typeof window !== 'undefined' ? window.innerHeight * 0.85 : 600 // max height (85vh)
@@ -153,7 +141,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       <div
         {...handlers}
         className={`lg:hidden flex items-center justify-center py-2 cursor-ns-resize touch-none select-none border-b border-[#003B00] ${
-          isResizing ? 'bg-[#00FF41]/20' : 'bg-[#003B00]/40 active:bg-[#003B00]/60'
+          isDragging ? 'bg-[#00FF41]/20' : 'bg-[#003B00]/40 active:bg-[#003B00]/60'
         } transition-colors`}
       >
         <div className="flex flex-col items-center gap-0.5">
