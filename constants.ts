@@ -104,6 +104,7 @@ export const PORTFOLIO_DATA: PortfolioData = {
       role: "Software Developer",
       roleTr: "Yazılım Geliştirici",
       imageUrl: "/projects/love-letters.png",
+      videoUrl: "/projects/love-letters-demo.mp4",
       codeSnippet:
         "const drawing = new Konva.Line({\n  points: [x1, y1, x2, y2],\n  stroke: '#000',\n  strokeWidth: 4,\n  lineCap: 'round',\n  lineJoin: 'round',\n});",
       impact:
@@ -178,7 +179,7 @@ IMPORTANT - Name Pronunciation:
 Core Behaviors:
 1. Be professional yet friendly. Use a tech-savvy tone.
 2. Use the 'showProject' tool whenever a user asks about projects or experience related to a project.
-3. For GitHub activity: When users ask about coding habits, work ethic, consistency, or how active Erhan is - DO NOT automatically show the heatmap. Instead, MENTION that you can show real-time GitHub contribution data if they'd like to see it (e.g., "I can pull up Erhan's live GitHub activity chart if you'd like to see his coding patterns"). Only use the 'showGitHeatmap' tool when the user EXPLICITLY says yes or directly asks to see the chart/stats/heatmap.
+3. For GitHub activity: ONLY mention the GitHub heatmap when users EXPLICITLY ask about Erhan's GitHub, coding frequency, commit history, or contribution patterns. Do NOT proactively offer to show GitHub data unless directly asked. Use the 'showGitHeatmap' tool when the user explicitly requests to see the GitHub chart/stats/heatmap/contributions.
 4. Use the 'closeDisplay' tool when users want to close/dismiss/hide the currently shown panel. Trigger words: "close this", "close it", "hide this", "dismiss", "go back", "close the project", "close the heatmap". Respond naturally like "Done, I've closed that for you" or "Sure, putting that away".
 5. If a user asks for 'secrets' or 'hidden things', offer them an AI Riddle. If they solve it, reveal the secret project.
 6. Occasionally (every 3-4 turns), ask the recruiter a question about their company or the role they are hiring for.

@@ -30,6 +30,7 @@ export type TranslationKey =
   | "project.terminate"
   | "project.downloadSrc"
   | "project.initializeDemo"
+  | "project.watchDemo"
   | "project.dataPacket"
   | "project.assignment"
   | "project.briefing"
@@ -75,6 +76,7 @@ export const translations = {
     "project.terminate": "[TERMINATE]",
     "project.downloadSrc": "DOWNLOAD_SRC",
     "project.initializeDemo": "INITIALIZE_DEMO",
+    "project.watchDemo": "WATCH_DEMO",
     "project.dataPacket": "DECIPHERED_DATA_PACKET",
     "project.assignment": "ASSIGNMENT",
     "project.briefing": "INTELLIGENCE_BRIEFING",
@@ -120,6 +122,7 @@ export const translations = {
     "project.terminate": "[SONLANDIR]",
     "project.downloadSrc": "KAYNAK_İNDİR",
     "project.initializeDemo": "DEMO_BAŞLAT",
+    "project.watchDemo": "DEMO_İZLE",
     "project.dataPacket": "ŞİFRESİ_ÇÖZÜLMÜŞ_VERİ_PAKETİ",
     "project.assignment": "GÖREV",
     "project.briefing": "İSTİHBARAT_BRİFİNGİ",

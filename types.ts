@@ -8,6 +8,7 @@ export interface Project {
   role: string;
   roleTr?: string;
   demoUrl?: string;
+  videoUrl?: string;
   githubUrl?: string;
   imageUrl: string;
   codeSnippet?: string;

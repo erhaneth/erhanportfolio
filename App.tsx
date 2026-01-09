@@ -212,7 +212,14 @@ const AppContent: React.FC = () => {
       },
       [updateTransientMessage]
     ),
-    onTurnComplete: finalizeTransientMessages,
+    onTurnComplete: useCallback(() => {
+      finalizeTransientMessages((updatedMessages) => {
+        // Check if we should notify Slack for voice chat
+        checkAndNotify(
+          updatedMessages.map((m) => ({ role: m.role, content: m.content }))
+        );
+      });
+    }, [finalizeTransientMessages, checkAndNotify]),
     onSystemMessage: addSystemMessage,
     onResumeRequest: () => setShowEmailModal(true),
     onShowGitHeatmap: () => setShowGitHeatmap(true),

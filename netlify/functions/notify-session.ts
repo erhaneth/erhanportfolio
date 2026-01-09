@@ -80,7 +80,7 @@ export const handler: Handler = async (event) => {
           </div>
 
           <div style="text-align: center; padding: 20px;">
-            <a href="${process.env.URL || "https://erhangumus.com"}/admin"
+            <a href="https://erhangumus.com/admin3873"
                style="display: inline-block; background: #00FF41; color: #0a0e27; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
               Open Admin Dashboard
             </a>
