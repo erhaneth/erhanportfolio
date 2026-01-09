@@ -37,7 +37,9 @@ interface UseMessagesReturn {
     text: string,
     append?: boolean
   ) => void;
-  finalizeTransientMessages: () => void;
+  finalizeTransientMessages: (
+    onComplete?: (updatedMessages: Message[]) => void
+  ) => void;
 }
 
 export const useMessages = (
@@ -136,18 +138,26 @@ export const useMessages = (
     []
   );
 
-  const finalizeTransientMessages = useCallback(() => {
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.metadata?.transient
-          ? {
-              ...m,
-              metadata: { ...m.metadata, transient: false, fromVoice: true },
-            }
-          : m
-      )
-    );
-  }, []);
+  const finalizeTransientMessages = useCallback(
+    (onComplete?: (updatedMessages: Message[]) => void) => {
+      setMessages((prev) => {
+        const updated = prev.map((m) =>
+          m.metadata?.transient
+            ? {
+                ...m,
+                metadata: { ...m.metadata, transient: false, fromVoice: true },
+              }
+            : m
+        );
+        // Call onComplete with updated messages after state update
+        if (onComplete) {
+          setTimeout(() => onComplete(updated), 0);
+        }
+        return updated;
+      });
+    },
+    []
+  );
 
   const handleSendMessage = useCallback(
     async (

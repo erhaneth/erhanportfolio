@@ -14,26 +14,58 @@ import { useNavigate } from "react-router-dom";
 
 interface ExpandedSession extends SessionInfo {
   conversation?: any[];
-  isExpanded?: boolean;
   messageInput?: string;
 }
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "";
 
+// Helper function for relative time
+const getRelativeTime = (timestamp: number): string => {
+  const now = Date.now();
+  const diff = now - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return new Date(timestamp).toLocaleDateString();
+};
+
 export const AdminDashboard: React.FC = () => {
   const [sessions, setSessions] = useState<ExpandedSession[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isMobileConversationOpen, setIsMobileConversationOpen] = useState(false);
   const navigate = useNavigate();
+  const conversationEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Load sessions - preserve expanded state and message input
+  // Get selected session
+  const selectedSession = sessions.find((s) => s.sessionId === selectedSessionId);
+
+  // Auto-scroll to bottom of conversation
+  useEffect(() => {
+    if (conversationEndRef.current) {
+      conversationEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [selectedSession?.conversation]);
+
+  // Focus input when session is selected
+  useEffect(() => {
+    if (selectedSessionId && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [selectedSessionId]);
+
+  // Load sessions
   const loadSessions = async () => {
     setLoading(true);
     try {
       const data = await getActiveSessions();
-      // Merge with existing state to preserve isExpanded, conversation, messageInput
       setSessions((prev) => {
         return data.map((newSession) => {
           const existingSession = prev.find(
@@ -42,7 +74,6 @@ export const AdminDashboard: React.FC = () => {
           if (existingSession) {
             return {
               ...newSession,
-              isExpanded: existingSession.isExpanded,
               conversation: existingSession.conversation,
               messageInput: existingSession.messageInput,
             };
@@ -58,7 +89,7 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Auto-refresh every 10 seconds (less aggressive)
+  // Auto-refresh every 10 seconds
   useEffect(() => {
     if (!isAuthenticated) return;
     loadSessions();
@@ -69,54 +100,51 @@ export const AdminDashboard: React.FC = () => {
   // Track active subscriptions
   const subscriptionsRef = useRef<{ [key: string]: () => void }>({});
 
-  // Toggle session expansion
-  const toggleSession = async (sessionId: string) => {
-    const session = sessions.find((s) => s.sessionId === sessionId);
-    const wasExpanded = session?.isExpanded;
+  // Subscribe to conversation when session is selected
+  useEffect(() => {
+    if (!selectedSessionId) return;
 
-    setSessions((prev) =>
-      prev.map((s) => {
-        if (s.sessionId === sessionId) {
-          return { ...s, isExpanded: !s.isExpanded };
-        }
-        return s;
-      })
-    );
-
-    // If expanding, subscribe to real-time updates
-    if (!wasExpanded) {
-      // Initial load
-      const conversation = await getSessionConversation(sessionId);
+    // Load initial conversation
+    const loadConversation = async () => {
+      const conversation = await getSessionConversation(selectedSessionId);
       setSessions((prev) =>
         prev.map((s) =>
-          s.sessionId === sessionId ? { ...s, conversation } : s
+          s.sessionId === selectedSessionId ? { ...s, conversation } : s
         )
       );
+    };
+    loadConversation();
 
-      // Subscribe to real-time updates
-      const unsubscribe = subscribeToConversation(sessionId, (conversation) => {
-        setSessions((prev) =>
-          prev.map((s) =>
-            s.sessionId === sessionId ? { ...s, conversation } : s
-          )
-        );
-      });
-      subscriptionsRef.current[sessionId] = unsubscribe;
-    } else {
-      // If collapsing, unsubscribe
-      if (subscriptionsRef.current[sessionId]) {
-        subscriptionsRef.current[sessionId]();
-        delete subscriptionsRef.current[sessionId];
+    // Subscribe to real-time updates
+    const unsubscribe = subscribeToConversation(selectedSessionId, (conversation) => {
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.sessionId === selectedSessionId ? { ...s, conversation } : s
+        )
+      );
+    });
+    subscriptionsRef.current[selectedSessionId] = unsubscribe;
+
+    return () => {
+      if (subscriptionsRef.current[selectedSessionId]) {
+        subscriptionsRef.current[selectedSessionId]();
+        delete subscriptionsRef.current[selectedSessionId];
       }
-    }
-  };
+    };
+  }, [selectedSessionId]);
 
-  // Cleanup subscriptions on unmount
+  // Cleanup all subscriptions on unmount
   useEffect(() => {
     return () => {
       Object.values(subscriptionsRef.current).forEach((unsub) => unsub());
     };
   }, []);
+
+  // Select a session
+  const handleSelectSession = (sessionId: string) => {
+    setSelectedSessionId(sessionId);
+    setIsMobileConversationOpen(true);
+  };
 
   // Join a session
   const handleJoin = async (sessionId: string) => {
@@ -151,22 +179,18 @@ export const AdminDashboard: React.FC = () => {
 
   const handleMessageInputChange = useCallback(
     (sessionId: string, value: string) => {
-      // Update local state
       setSessions((prev) =>
         prev.map((s) =>
           s.sessionId === sessionId ? { ...s, messageInput: value } : s
         )
       );
 
-      // Set typing indicator
       setOperatorTyping(sessionId, true);
 
-      // Clear previous timeout
       if (typingTimeoutRef.current[sessionId]) {
         clearTimeout(typingTimeoutRef.current[sessionId]);
       }
 
-      // Set timeout to clear typing after 2 seconds of no typing
       typingTimeoutRef.current[sessionId] = setTimeout(() => {
         setOperatorTyping(sessionId, false);
       }, 2000);
@@ -174,22 +198,19 @@ export const AdminDashboard: React.FC = () => {
     []
   );
 
-  // Send message from admin dashboard
+  // Send message
   const handleSendMessage = async (sessionId: string) => {
     const session = sessions.find((s) => s.sessionId === sessionId);
     const message = session?.messageInput?.trim();
     if (!message) return;
 
     try {
-      // Ensure session is live
       if (!session?.isLive) {
         await setSessionLive(sessionId, true);
       }
 
-      // Send the message
       await sendOperatorMessage(sessionId, message);
 
-      // Clear input and optimistically mark session live; conversation will update via subscription
       setSessions((prev) =>
         prev.map((s) =>
           s.sessionId === sessionId
@@ -215,39 +236,52 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  // Stats
+  const liveCount = sessions.filter((s) => s.isLive).length;
+  const totalSessions = sessions.length;
+
   // Login screen
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#0a0e27] text-[#00FF41] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-black text-[#00FF41] flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <div className="border border-[#00FF41] rounded p-8 backdrop-blur-sm">
-            <h1 className="text-2xl font-bold mb-2 text-center">
-              [ADMIN_ACCESS]
-            </h1>
-            <p className="text-[#00FF41]/70 text-center mb-6">
-              Neural Interface Authentication Required
-            </p>
+          <div className="border border-[#00FF41]/30 rounded-lg p-8 bg-black/80 backdrop-blur-sm shadow-[0_0_50px_rgba(0,255,65,0.1)]">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#00FF41]/10 flex items-center justify-center">
+                <svg className="w-8 h-8 text-[#00FF41]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold mb-2">Operator Access</h1>
+              <p className="text-[#00FF41]/60 text-sm">
+                Enter credentials to access the dashboard
+              </p>
+            </div>
 
             <form onSubmit={handleLogin} className="space-y-4">
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password..."
-                aria-label="Admin password"
-                className="w-full bg-[#1a1f3a] border border-[#00FF41]/50 rounded px-4 py-2 text-[#00FF41] placeholder-[#00FF41]/50 focus:outline-none focus:border-[#00FF41]"
-                autoFocus
-              />
+              <div>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  aria-label="Admin password"
+                  className="w-full bg-[#1a1f3a] border border-[#00FF41]/30 rounded-lg px-4 py-3 text-[#00FF41] placeholder-[#00FF41]/40 focus:outline-none focus:border-[#00FF41] focus:ring-1 focus:ring-[#00FF41]/50 transition"
+                  autoFocus
+                />
+              </div>
 
               {error && (
-                <p className="text-red-500 text-sm text-center">{error}</p>
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-2">
+                  <p className="text-red-400 text-sm text-center">{error}</p>
+                </div>
               )}
 
               <button
                 type="submit"
-                className="w-full bg-[#00FF41] text-black font-bold py-2 rounded hover:bg-[#00DD33] transition"
+                className="w-full bg-[#00FF41] text-[#0a0e27] font-bold py-3 rounded-lg hover:bg-[#00DD33] transition shadow-[0_0_20px_rgba(0,255,65,0.3)]"
               >
-                [AUTHENTICATE]
+                Access Dashboard
               </button>
             </form>
           </div>
@@ -256,199 +290,268 @@ export const AdminDashboard: React.FC = () => {
     );
   }
 
-  // Dashboard
+  // Dashboard with split panel
   return (
-    <div className="min-h-screen bg-[#0a0e27] text-[#00FF41] p-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8 pb-4 border-b border-[#00FF41]/30">
-          <div>
-            <h1 className="text-3xl font-bold">[OPERATOR_DASHBOARD]</h1>
-            <p className="text-[#00FF41]/70 text-sm mt-1">
-              Active Sessions Monitor • Ghost Mode Control
-            </p>
+    <div className="h-screen bg-black text-[#00FF41] flex flex-col">
+      {/* Header */}
+      <header className="flex-shrink-0 border-b border-[#00FF41]/20 bg-black">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-bold hidden sm:block">Operator Dashboard</h1>
+            <h1 className="text-xl font-bold sm:hidden">Dashboard</h1>
+            <div className="flex items-center gap-3 text-sm">
+              <span className="flex items-center gap-1.5 bg-[#1a1f3a] px-3 py-1 rounded-full">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                <span className="text-[#00FF41]/80">{liveCount} Live</span>
+              </span>
+              <span className="flex items-center gap-1.5 bg-[#1a1f3a] px-3 py-1 rounded-full">
+                <span className="w-2 h-2 rounded-full bg-[#00FF41]"></span>
+                <span className="text-[#00FF41]/80">{totalSessions} Active</span>
+              </span>
+            </div>
           </div>
           <button
             onClick={() => navigate("/")}
-            className="bg-[#1a1f3a] border border-[#00FF41]/50 text-[#00FF41] px-4 py-2 rounded hover:border-[#00FF41] transition"
+            className="text-[#00FF41]/70 hover:text-[#00FF41] px-3 py-1.5 rounded-lg hover:bg-[#1a1f3a] transition text-sm"
           >
-            [EXIT]
+            Exit
           </button>
         </div>
+      </header>
 
-        {/* Loading/Error */}
-        {loading && sessions.length === 0 && (
-          <p className="text-center text-[#00FF41]/70">
-            [SCANNING_MAINFRAME]...
-          </p>
-        )}
-        {error && <p className="text-center text-red-500 mb-4">{error}</p>}
-
-        {/* Sessions List */}
-        {sessions.length === 0 && !loading ? (
-          <div className="text-center py-12 text-[#00FF41]/70">
-            <p>[NO_ACTIVE_SESSIONS]</p>
+      {/* Main content - Split panel */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sessions Sidebar */}
+        <aside className={`w-full md:w-80 lg:w-96 flex flex-col bg-black ${isMobileConversationOpen ? 'hidden md:flex' : 'flex'}`}>
+          {/* Sidebar Header */}
+          <div className="p-4 border-b border-[#00FF41]/10">
+            <h2 className="text-sm font-semibold text-[#00FF41]/70 uppercase tracking-wider">
+              Sessions ({totalSessions})
+            </h2>
           </div>
-        ) : (
-          <div className="space-y-4">
+
+          {/* Sessions List */}
+          <div className="flex-1 overflow-y-auto">
+            {loading && sessions.length === 0 && (
+              <div className="p-4 text-center text-[#00FF41]/50">
+                <div className="animate-pulse">Scanning for sessions...</div>
+              </div>
+            )}
+
+            {!loading && sessions.length === 0 && (
+              <div className="p-8 text-center">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-[#1a1f3a] flex items-center justify-center">
+                  <svg className="w-6 h-6 text-[#00FF41]/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <p className="text-[#00FF41]/50 text-sm">No active sessions</p>
+                <p className="text-[#00FF41]/30 text-xs mt-1">Sessions will appear here when visitors chat</p>
+              </div>
+            )}
+
             {sessions.map((session) => (
               <div
                 key={session.sessionId}
-                className="border border-[#00FF41]/30 rounded bg-[#1a1f3a]/50 backdrop-blur-sm hover:border-[#00FF41]/60 transition"
+                onClick={() => handleSelectSession(session.sessionId)}
+                className={`p-4 border-b border-[#00FF41]/10 cursor-pointer transition hover:bg-[#1a1f3a]/50 ${
+                  selectedSessionId === session.sessionId
+                    ? "bg-[#1a1f3a] border-l-2 border-l-[#00FF41]"
+                    : ""
+                }`}
               >
-                {/* Session Header */}
-                <div
-                  className="p-4 cursor-pointer"
-                  onClick={() => toggleSession(session.sessionId)}
-                  role="button"
-                  tabIndex={0}
-                  aria-expanded={session.isExpanded}
-                  aria-label={`Toggle session ${session.sessionId}`}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      toggleSession(session.sessionId);
-                    }
-                  }}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <code className="text-xs bg-[#0a0e27] px-2 py-1 rounded">
-                          {session.sessionId}
-                        </code>
-                        {session.isLive ? (
-                          <span className="text-red-500 text-xs font-bold animate-pulse">
-                            🔴 LIVE
-                          </span>
-                        ) : (
-                          <span className="text-yellow-500 text-xs font-bold">
-                            🟡 GHOST
-                          </span>
-                        )}
-                      </div>
-
-                      <p className="text-[#00FF41]/90 text-sm mb-1">
-                        {session.firstUserMessage || "..."}
-                      </p>
-
-                      <div className="flex items-center gap-4 text-xs text-[#00FF41]/70">
-                        <span>Messages: {session.messageCount}</span>
-                        <span>
-                          Last:{" "}
-                          {new Date(
-                            session.lastMessageTime
-                          ).toLocaleTimeString()}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      {!session.isLive ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleJoin(session.sessionId);
-                          }}
-                          aria-label={`Join session ${session.sessionId}`}
-                          className="bg-[#00FF41] text-black px-4 py-2 rounded text-sm font-bold hover:bg-[#00DD33] transition"
-                        >
-                          [JOIN]
-                        </button>
-                      ) : (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleLeave(session.sessionId);
-                          }}
-                          aria-label={`Leave session ${session.sessionId}`}
-                          className="bg-red-600/50 text-red-200 px-4 py-2 rounded text-sm font-bold hover:bg-red-600 transition"
-                        >
-                          [LEAVE]
-                        </button>
-                      )}
-                    </div>
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${session.isLive ? 'bg-red-500 animate-pulse' : 'bg-yellow-500'}`}></span>
+                    <code className="text-xs text-[#00FF41]/60">{session.sessionId.substring(0, 8)}</code>
                   </div>
+                  <span className="text-xs text-[#00FF41]/40">
+                    {getRelativeTime(session.lastMessageTime)}
+                  </span>
                 </div>
 
-                {/* Expanded Conversation */}
-                {session.isExpanded && (
-                  <div className="border-t border-[#00FF41]/30 p-4 bg-[#0a0e27]/50">
-                    {session.conversation ? (
-                      <div className="space-y-3 max-h-60 overflow-y-auto mb-4">
-                        {session.conversation.map((msg, idx) => (
-                          <div
-                            key={idx}
-                            className={`text-xs p-2 rounded ${
-                              msg.role === "user" || msg.role === "visitor"
-                                ? "bg-[#1a3a1a]/50 border-l-2 border-[#00FF41]"
-                                : msg.role === "operator"
-                                ? "bg-[#3a2a1a]/50 border-l-2 border-yellow-500"
-                                : "bg-[#1a1a2a]/50 border-l-2 border-[#00FF41]/50"
-                            }`}
-                          >
-                            <strong className="text-[#00FF41]">
-                              {msg.role === "visitor"
-                                ? "VISITOR"
-                                : msg.role === "operator"
-                                ? "ERHAN"
-                                : msg.role.toUpperCase()}
-                              :
-                            </strong>{" "}
-                            <span className="text-[#00FF41]/80">
-                              {msg.content?.substring(0, 300)}
-                              {msg.content?.length > 300 ? "..." : ""}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-[#00FF41]/70 text-xs mb-4">
-                        [LOADING_CONVERSATION]...
-                      </p>
-                    )}
+                <p className="text-sm text-[#00FF41]/90 line-clamp-2 mb-2">
+                  {session.firstUserMessage || "No messages yet..."}
+                </p>
 
-                    {/* Chat Input */}
-                    <div className="flex gap-2 pt-2 border-t border-[#00FF41]/20">
-                      <input
-                        type="text"
-                        value={session.messageInput || ""}
-                        onChange={(e) =>
-                          handleMessageInputChange(
-                            session.sessionId,
-                            e.target.value
-                          )
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSendMessage(session.sessionId);
-                          }
-                        }}
-                        placeholder="Type a message..."
-                        aria-label="Type a message to visitor"
-                        className="flex-1 bg-[#1a1f3a] border border-[#00FF41]/30 rounded px-3 py-2 text-[#00FF41] text-sm placeholder-[#00FF41]/40 focus:outline-none focus:border-[#00FF41]"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSendMessage(session.sessionId);
-                        }}
-                        disabled={!session.messageInput?.trim()}
-                        aria-label="Send message to visitor"
-                        className="bg-[#00FF41] text-black px-4 py-2 rounded text-sm font-bold hover:bg-[#00DD33] transition disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        [SEND]
-                      </button>
-                    </div>
-                  </div>
-                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[#00FF41]/50">
+                    {session.messageCount} messages
+                  </span>
+                  {session.isLive && (
+                    <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">
+                      LIVE
+                    </span>
+                  )}
+                </div>
               </div>
             ))}
           </div>
-        )}
+        </aside>
+
+        {/* Conversation Panel */}
+        <main className={`flex-1 flex flex-col bg-black ${!isMobileConversationOpen && !selectedSessionId ? 'hidden md:flex' : 'flex'}`}>
+          {!selectedSession ? (
+            // Empty state
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#1a1f3a] flex items-center justify-center">
+                  <svg className="w-8 h-8 text-[#00FF41]/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
+                </div>
+                <p className="text-[#00FF41]/50">Select a session to view conversation</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Conversation Header */}
+              <div className="flex-shrink-0 border-b border-[#00FF41]/20 p-4 bg-black">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {/* Back button for mobile */}
+                    <button
+                      onClick={() => setIsMobileConversationOpen(false)}
+                      className="md:hidden p-2 -ml-2 text-[#00FF41]/70 hover:text-[#00FF41]"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${selectedSession.isLive ? 'bg-red-500 animate-pulse' : 'bg-yellow-500'}`}></span>
+                        <code className="text-sm font-mono">{selectedSession.sessionId}</code>
+                      </div>
+                      <p className="text-xs text-[#00FF41]/50 mt-0.5">
+                        {selectedSession.messageCount} messages • Last active {getRelativeTime(selectedSession.lastMessageTime)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {!selectedSession.isLive ? (
+                      <button
+                        onClick={() => handleJoin(selectedSession.sessionId)}
+                        className="bg-[#00FF41] text-[#0a0e27] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#00DD33] transition flex items-center gap-2"
+                      >
+                        <span className="w-2 h-2 rounded-full bg-[#0a0e27]"></span>
+                        Go Live
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleLeave(selectedSession.sessionId)}
+                        className="bg-red-500/20 text-red-400 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition flex items-center gap-2"
+                      >
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                        End Session
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {!selectedSession.conversation ? (
+                  <div className="text-center py-8 text-[#00FF41]/50">
+                    <div className="animate-pulse">Loading conversation...</div>
+                  </div>
+                ) : selectedSession.conversation.length === 0 ? (
+                  <div className="text-center py-8 text-[#00FF41]/50">
+                    No messages yet
+                  </div>
+                ) : (
+                  selectedSession.conversation.map((msg, idx) => {
+                    const isVisitor = msg.role === "user" || msg.role === "visitor";
+                    const isOperator = msg.role === "operator";
+                    const isAI = msg.role === "ai" || msg.role === "assistant";
+
+                    return (
+                      <div
+                        key={idx}
+                        className={`flex ${isVisitor ? "justify-start" : "justify-end"}`}
+                      >
+                        <div
+                          className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                            isVisitor
+                              ? "bg-[#1a1f3a] rounded-tl-sm"
+                              : isOperator
+                              ? "bg-[#00FF41]/20 rounded-tr-sm"
+                              : "bg-[#2a2f4a] rounded-tr-sm"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-xs font-semibold ${
+                              isVisitor ? "text-blue-400" : isOperator ? "text-[#00FF41]" : "text-purple-400"
+                            }`}>
+                              {isVisitor ? "Visitor" : isOperator ? "You" : "AI"}
+                            </span>
+                            {msg.timestamp && (
+                              <span className="text-xs text-[#00FF41]/30">
+                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-[#00FF41]/90 whitespace-pre-wrap">
+                            {msg.content}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={conversationEndRef} />
+              </div>
+
+              {/* Input */}
+              <div className="flex-shrink-0 border-t border-[#00FF41]/20 p-4 bg-black">
+                <div className="flex gap-3">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={selectedSession.messageInput || ""}
+                    onChange={(e) =>
+                      handleMessageInputChange(selectedSession.sessionId, e.target.value)
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage(selectedSession.sessionId);
+                      }
+                    }}
+                    placeholder="Type a message... (Enter to send)"
+                    className="flex-1 bg-[#1a1f3a] border border-[#00FF41]/20 rounded-xl px-4 py-3 text-[#00FF41] placeholder-[#00FF41]/30 focus:outline-none focus:border-[#00FF41]/50 focus:ring-1 focus:ring-[#00FF41]/20 transition"
+                  />
+                  <button
+                    onClick={() => handleSendMessage(selectedSession.sessionId)}
+                    disabled={!selectedSession.messageInput?.trim()}
+                    className="bg-[#00FF41] text-[#0a0e27] px-6 py-3 rounded-xl font-semibold hover:bg-[#00DD33] transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <span className="hidden sm:inline">Send</span>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </main>
       </div>
+
+      {/* Error Toast */}
+      {error && (
+        <div className="fixed bottom-4 right-4 bg-red-500/90 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="hover:opacity-70">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 };
