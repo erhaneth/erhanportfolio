@@ -373,7 +373,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 disabled={isLoading}
                 placeholder={translate("chat.placeholder")}
                 aria-label="Type your message"
-                className="flex-1 bg-transparent border-none py-2 text-xs sm:text-sm text-[#00FF41] focus:outline-none placeholder:text-[#003B00] mono caret-[#00FF41]"
+                className="flex-1 bg-transparent border-none py-2 text-base text-[#00FF41] focus:outline-none placeholder:text-[#003B00] mono caret-[#00FF41]"
               />
 
               {/* Voice button */}
