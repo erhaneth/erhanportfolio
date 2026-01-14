@@ -51,10 +51,14 @@ const AppContent: React.FC = () => {
   // Monitor network connectivity
   useEffect(() => {
     const handleOnline = () => {
-      console.log("[App] Network: Online");
+      if (import.meta.env.DEV) {
+        console.log("[App] Network: Online");
+      }
     };
     const handleOffline = () => {
-      console.warn("[App] Network: Offline");
+      if (import.meta.env.DEV) {
+        console.warn("[App] Network: Offline");
+      }
     };
 
     window.addEventListener("online", handleOnline);
@@ -199,8 +203,10 @@ const AppContent: React.FC = () => {
     onProjectShow: handleProjectShow,
     onInputTranscript: useCallback(
       (text: string) => {
-        console.log("[App] onInputTranscript called with text:", text);
-        console.log("[App] Calling detectAndSetLanguage for voice input...");
+        if (import.meta.env.DEV) {
+          console.log("[App] onInputTranscript called with text:", text);
+          console.log("[App] Calling detectAndSetLanguage for voice input...");
+        }
         detectAndSetLanguage(text);
         updateTransientMessage("user", text);
       },
@@ -229,7 +235,9 @@ const AppContent: React.FC = () => {
   // Handle text message submission
   const onSendMessage = useCallback(
     async (text: string) => {
-      console.log("[App] onSendMessage called with text:", text);
+      if (import.meta.env.DEV) {
+        console.log("[App] onSendMessage called with text:", text);
+      }
       detectAndSetLanguage(text);
 
       if (isLiveMode) {
