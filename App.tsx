@@ -271,7 +271,7 @@ const AppContent: React.FC = () => {
     <div className="min-h-screen h-screen relative flex flex-col lg:flex-row p-2 sm:p-4 gap-2 sm:gap-4 max-w-screen-2xl mx-auto overflow-x-hidden text-[#00FF41]">
       <MatrixRain />
 
-      <aside className="relative z-20 w-full lg:w-80 lg:h-[calc(100vh-1rem)] lg:max-h-[calc(100vh-1rem)] flex flex-col gap-2 overflow-y-auto lg:overflow-y-auto">
+      <aside className="relative z-20 w-full lg:w-80 lg:h-[calc(100vh-1rem)] lg:max-h-[calc(100vh-1rem)] flex flex-col gap-2 overflow-y-auto lg:overflow-y-auto pb-[420px] lg:pb-0">
         <div className="glass-terminal border border-[#003B00] matrix-border-glow p-3 sm:p-4 lg:p-6 flex flex-col gap-3 sm:gap-4 flex-shrink-0">
           <div className="flex flex-col gap-4 border-b border-[#003B00] pb-4">
             <button
@@ -481,7 +481,7 @@ const AppContent: React.FC = () => {
 
       <main className="relative z-20 flex-1 flex flex-col lg:flex-row gap-2 sm:gap-4 h-full lg:h-[calc(100vh-1rem)] min-h-0 overflow-hidden">
         <section
-          className={`flex-1 transition-all duration-700 ease-in-out overflow-hidden flex flex-col ${
+          className={`transition-all duration-700 ease-in-out overflow-hidden flex flex-col ${
             activeProject || showGitHeatmap ? "lg:flex-[0.45]" : "lg:flex-1"
           }`}
         >

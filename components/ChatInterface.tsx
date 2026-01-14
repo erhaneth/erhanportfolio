@@ -6,6 +6,32 @@ import { useLanguage } from "../contexts/LanguageContext";
 import ReactMarkdown from "react-markdown";
 import VoiceButton from "./VoiceButton";
 
+// Drag-to-resize hook for mobile chat
+const useResizable = (initial: number, min: number, max: number) => {
+  const [height, setHeight] = useState(initial);
+  const [isDragging, setIsDragging] = useState(false);
+  const start = useRef({ y: 0, h: 0 });
+
+  const handlers = {
+    onPointerDown: (e: React.PointerEvent) => {
+      e.preventDefault();
+      start.current = { y: e.clientY, h: height };
+      setIsDragging(true);
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      if (!isDragging) return;
+      setHeight(Math.min(max, Math.max(min, start.current.h + start.current.y - e.clientY)));
+    },
+    onPointerUp: (e: React.PointerEvent) => {
+      setIsDragging(false);
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    },
+  };
+
+  return { height, isDragging, handlers };
+};
+
 interface ChatInterfaceProps {
   messages: Message[];
   isLoading: boolean;
@@ -43,6 +69,23 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     new Set()
   );
   const scrollRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if mobile on mount and resize
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Resizable chat - min 200px, max 85vh
+  const { height, isDragging, handlers } = useResizable(
+    400, // initial height
+    200, // min height
+    typeof window !== 'undefined' ? window.innerHeight * 0.85 : 600 // max height (85vh)
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,7 +130,25 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0 glass-terminal border border-[#003B00] shadow-[0_0_20px_rgba(0,59,0,0.5)]">
+    <div
+      ref={containerRef}
+      className={`flex flex-col glass-terminal border border-[#003B00] shadow-[0_0_20px_rgba(0,59,0,0.5)] lg:h-full ${
+        isMobile ? 'fixed bottom-0 left-0 right-0 z-30' : ''
+      }`}
+      style={{ height: isMobile ? `${height}px` : undefined }}
+    >
+      {/* Drag Handle - Mobile Only */}
+      <div
+        {...handlers}
+        className={`lg:hidden flex items-center justify-center py-2 cursor-ns-resize touch-none select-none border-b border-[#003B00] ${
+          isDragging ? 'bg-[#00FF41]/20' : 'bg-[#003B00]/40 active:bg-[#003B00]/60'
+        } transition-colors`}
+      >
+        <div className="flex flex-col items-center gap-0.5">
+          <div className="w-12 h-1.5 rounded-full bg-[#00FF41]/70" />
+        </div>
+      </div>
+
       <div className="bg-[#003B00]/60 px-2 sm:px-4 py-2 flex justify-between items-center border-b border-[#00FF41] flex-shrink-0">
         <div className="flex items-center gap-2 sm:gap-4">
           <div className="flex gap-1">
