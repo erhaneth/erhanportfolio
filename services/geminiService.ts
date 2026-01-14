@@ -98,7 +98,9 @@ export const generateResponse = async (
   const cacheKey = getCacheKey(messages, userContext);
   const cached = responseCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    console.log("[Gemini] Using cached response");
+    if (import.meta.env.DEV) {
+      console.log("[Gemini] Using cached response");
+    }
     return cached.data;
   }
 

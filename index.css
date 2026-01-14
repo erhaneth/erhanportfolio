@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 /* Mobile touch optimizations */
 * {
   -webkit-tap-highlight-color: transparent;
