@@ -133,7 +133,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     <div
       ref={containerRef}
       className={`flex flex-col glass-terminal border border-[#003B00] shadow-[0_0_20px_rgba(0,59,0,0.5)] lg:h-full ${
-        isMobile ? 'fixed bottom-0 left-0 right-0 z-30' : ''
+        isMobile ? `fixed bottom-0 left-0 right-0 ${isVoiceEnabled ? 'z-[110]' : 'z-30'}` : ''
       }`}
       style={{ height: isMobile ? `${height}px` : undefined }}
     >
