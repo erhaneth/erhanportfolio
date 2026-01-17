@@ -71,6 +71,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [showVoicePulse, setShowVoicePulse] = useState(false);
 
   // Check if mobile on mount and resize
   useEffect(() => {
@@ -79,6 +80,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Show voice button pulse after 30 seconds if voice hasn't been used
+  useEffect(() => {
+    if (isVoiceEnabled) {
+      setShowVoicePulse(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setShowVoicePulse(true);
+    }, 30000); // 30 seconds
+
+    return () => clearTimeout(timer);
+  }, [isVoiceEnabled]);
 
   // Resizable chat - min 200px, max 85vh
   const { height, isDragging, handlers } = useResizable(
@@ -378,14 +393,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
               {/* Voice button */}
               {onVoiceToggle && (
-                <VoiceButton
-                  isActive={false}
-                  isConnecting={false}
-                  onClick={onVoiceToggle}
-                  userVolume={userVolume}
-                  aiVolume={aiVolume}
-                  isAiTalking={isAiTalking}
-                />
+                <div className="relative">
+                  {showVoicePulse && (
+                    <div className="absolute -inset-1 bg-[#00FF41]/20 animate-pulse rounded" />
+                  )}
+                  <VoiceButton
+                    isActive={false}
+                    isConnecting={false}
+                    onClick={() => {
+                      setShowVoicePulse(false);
+                      onVoiceToggle();
+                    }}
+                    userVolume={userVolume}
+                    aiVolume={aiVolume}
+                    isAiTalking={isAiTalking}
+                  />
+                </div>
               )}
 
               {/* Send button */}

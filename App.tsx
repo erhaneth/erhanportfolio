@@ -15,6 +15,8 @@ import MatrixRain from "./components/MatrixRain";
 import EmailModal from "./components/EmailModal";
 import LanguageActivation from "./components/LanguageActivation";
 import MissionBriefing from "./components/MissionBriefing";
+import BootSequence from "./components/BootSequence";
+import HelpPanel from "./components/HelpPanel";
 import ContextPills, {
   generateContextFromPills,
 } from "./components/ContextPills";
@@ -78,6 +80,16 @@ const AppContent: React.FC = () => {
   const [showGitHeatmap, setShowGitHeatmap] = useState(false);
   const [isClosingProject, setIsClosingProject] = useState(false);
   const [isClosingHeatmap, setIsClosingHeatmap] = useState(false);
+  const [showBootSequence, setShowBootSequence] = useState(false);
+  const [showHelpPanel, setShowHelpPanel] = useState(false);
+
+  // Check if this is the first visit
+  useEffect(() => {
+    const hasVisited = localStorage.getItem("zion_mainframe_visited");
+    if (!hasVisited) {
+      setShowBootSequence(true);
+    }
+  }, []);
 
   // Handle project switching - reset closing state when new project is set
   const handleProjectShow = useCallback((project: Project) => {
@@ -248,6 +260,22 @@ const AppContent: React.FC = () => {
       if (import.meta.env.DEV) {
         console.log("[App] onSendMessage called with text:", text);
       }
+
+      // Handle special commands
+      const trimmedText = text.trim().toLowerCase();
+
+      // /help command
+      if (trimmedText === "/help" || trimmedText === "help") {
+        setShowHelpPanel(true);
+        return;
+      }
+
+      // /clear command
+      if (trimmedText === "/clear" || trimmedText === "clear") {
+        window.location.reload();
+        return;
+      }
+
       detectAndSetLanguage(text);
 
       if (isLiveMode) {
@@ -287,6 +315,16 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen h-screen relative flex flex-col lg:flex-row p-2 sm:p-4 gap-2 sm:gap-4 max-w-screen-2xl mx-auto overflow-x-hidden text-[#00FF41]">
+      {/* Boot Sequence - First Visit Only */}
+      {showBootSequence && (
+        <BootSequence
+          onComplete={() => {
+            setShowBootSequence(false);
+            localStorage.setItem("zion_mainframe_visited", "true");
+          }}
+        />
+      )}
+
       <MatrixRain />
 
       <aside className="relative z-20 w-full lg:w-80 lg:h-[calc(100vh-1rem)] lg:max-h-[calc(100vh-1rem)] flex flex-col gap-2 overflow-y-auto lg:overflow-y-auto pb-[420px] lg:pb-0">
@@ -652,6 +690,9 @@ const AppContent: React.FC = () => {
         onConfirm={handleSendResume}
         isLoading={isSendingResume}
       />
+
+      {/* Help Panel */}
+      {showHelpPanel && <HelpPanel onClose={() => setShowHelpPanel(false)} />}
 
       {/* Language Activation Notification */}
       <LanguageActivation

@@ -8,8 +8,8 @@ import { t } from "../utils/translations";
 const createWelcomeMessage = (lang: "en" | "tr"): Message => {
   const content =
     lang === "tr"
-      ? `[KİMLİK DOĞRULANDI: ERHAN GÜMÜŞ]\n[SİSTEM_KAYDI]: Ana sistem başarıyla erişildi.\nSelamlar. Ben Erhan'ın çalışmalarına giden sinir köprüsüyüm. Hangi bilgilere ulasmak icin yetki istersiniz?`
-      : `[IDENTITY VERIFIED: ERHAN GUMUS]\n[SYSTEM_LOG]: Mainframe accessed successfully.\nGreetings. I am the neural bridge to Erhan's work. What information would you like to be authorized to view?`;
+      ? `[KİMLİK DOĞRULANDI: ERHAN GÜMÜŞ]\n[SİSTEM_KAYDI]: Ana sistem başarıyla erişildi.\n\nSelamlar. Ben Erhan'ın çalışmalarına giden sinir köprüsüyüm. Hangi bilgilere ulaşmak için yetki istersiniz?\n\n💡 *İpucu: İşe alım uzmanıysanız, "Kim olduğunuzu" belirtin. Ayrıca benimle konuşabilirsiniz - ses butonunu deneyin!*`
+      : `[IDENTITY VERIFIED: ERHAN GUMUS]\n[SYSTEM_LOG]: Mainframe accessed successfully.\n\nGreetings. I am the neural bridge to Erhan's work. What information would you like to be authorized to view?\n\n💡 *Tip: If you're a recruiter, click "WHO ARE YOU?" below to unlock recruiter mode. You can also talk to me - try the voice button!*`;
 
   return {
     id: "welcome",
