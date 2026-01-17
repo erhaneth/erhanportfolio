@@ -260,6 +260,7 @@ export const connectLive = async (
             unlockSecretProjectTool,
             requestResumeEmailTool,
             showGitHeatmapTool,
+            closeDisplayTool,
           ],
         },
       ],
