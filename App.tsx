@@ -90,10 +90,20 @@ const AppContent: React.FC = () => {
   const handleCloseDisplay = useCallback(
     (target: "project" | "heatmap" | "all") => {
       if (target === "project" || target === "all") {
-        setActiveProject(null);
+        // Trigger closing animation on mobile
+        setIsClosingProject(true);
+        setTimeout(() => {
+          setActiveProject(null);
+          setIsClosingProject(false);
+        }, 500);
       }
       if (target === "heatmap" || target === "all") {
-        setShowGitHeatmap(false);
+        // Trigger closing animation on mobile
+        setIsClosingHeatmap(true);
+        setTimeout(() => {
+          setShowGitHeatmap(false);
+          setIsClosingHeatmap(false);
+        }, 500);
       }
     },
     []
