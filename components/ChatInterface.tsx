@@ -72,6 +72,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [showVoicePulse, setShowVoicePulse] = useState(false);
+  const [showCommandSuggestions, setShowCommandSuggestions] = useState(false);
+  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
+
+  // Available slash commands
+  const availableCommands = [
+    { command: "/help", description: "Show help panel with all commands" },
+    { command: "/clear", description: "Clear conversation and refresh" },
+  ];
 
   // Check if mobile on mount and resize
   useEffect(() => {
@@ -102,9 +110,59 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     typeof window !== 'undefined' ? window.innerHeight * 0.85 : 600 // max height (85vh)
   );
 
+  // Filter commands based on input
+  const filteredCommands = React.useMemo(() => {
+    if (!input.startsWith("/")) return [];
+    return availableCommands.filter((cmd) =>
+      cmd.command.toLowerCase().startsWith(input.toLowerCase())
+    );
+  }, [input, availableCommands]);
+
+  // Handle input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInput(value);
+
+    // Show suggestions when typing "/" commands
+    if (value.startsWith("/") && value.length > 0) {
+      setShowCommandSuggestions(true);
+      setSelectedCommandIndex(0);
+    } else {
+      setShowCommandSuggestions(false);
+    }
+  };
+
+  // Handle command selection
+  const selectCommand = (command: string) => {
+    setInput(command);
+    setShowCommandSuggestions(false);
+    setSelectedCommandIndex(0);
+  };
+
+  // Handle keyboard navigation in command suggestions
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showCommandSuggestions || filteredCommands.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedCommandIndex((prev) =>
+        prev < filteredCommands.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedCommandIndex((prev) => (prev > 0 ? prev - 1 : prev));
+    } else if (e.key === "Enter" && showCommandSuggestions) {
+      e.preventDefault();
+      selectCommand(filteredCommands[selectedCommandIndex].command);
+    } else if (e.key === "Escape") {
+      setShowCommandSuggestions(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
+    setShowCommandSuggestions(false);
     onSendMessage(input);
     setInput("");
   };
@@ -374,7 +432,31 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       >
         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#00FF41]/20 to-transparent"></div>
 
-        <div className="flex items-center gap-2 sm:gap-3 px-1 sm:px-2">
+        <div className="flex items-center gap-2 sm:gap-3 px-1 sm:px-2 relative">
+          {/* Command Suggestions Dropdown */}
+          {showCommandSuggestions && filteredCommands.length > 0 && (
+            <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#020202] border border-[#00FF41] shadow-[0_0_20px_rgba(0,255,65,0.3)] z-50 max-h-32 overflow-y-auto">
+              {filteredCommands.map((cmd, index) => (
+                <div
+                  key={cmd.command}
+                  onClick={() => selectCommand(cmd.command)}
+                  className={`px-4 py-2 cursor-pointer transition-colors ${
+                    index === selectedCommandIndex
+                      ? "bg-[#00FF41]/20 border-l-2 border-[#00FF41]"
+                      : "hover:bg-[#003B00]/50"
+                  }`}
+                >
+                  <div className="text-[#00FF41] text-sm font-bold mono">
+                    {cmd.command}
+                  </div>
+                  <div className="text-[#008F11] text-xs mt-0.5">
+                    {cmd.description}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Normal input mode */}
           {!isVoiceEnabled && !isVoiceConnecting ? (
             <>
@@ -384,7 +466,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               <input
                 type="text"
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
                 disabled={isLoading}
                 placeholder={translate("chat.placeholder")}
                 aria-label="Type your message"
