@@ -51,6 +51,7 @@ export const PORTFOLIO_DATA: PortfolioData = {
       role: "Developer",
       roleTr: "Baş Geliştirici",
       imageUrl: "/projects/tip.png",
+      demoUrl: "https://apps.apple.com/us/app/t%C3%AEp/id6757164385",
       codeSnippet:
         "func keyboardAwareDistance(_ s1: String, _ s2: String) -> Double {\n    // Custom Levenshtein distance that accounts for keyboard layout\n    // Adjacent keys (typos) cost 0.5, non-adjacent cost 1.0\n    let substitutionCost = adjacentKeys.contains(char2) ? 0.5 : 1.0\n    return min(dp[i-1][j] + 1.0, dp[i][j-1] + 1.0, dp[i-1][j-1] + substitutionCost)\n}",
       impact:

@@ -30,6 +30,7 @@ export type TranslationKey =
   | "project.terminate"
   | "project.downloadSrc"
   | "project.initializeDemo"
+  | "project.viewOnAppStore"
   | "project.dataPacket"
   | "project.assignment"
   | "project.briefing"
@@ -54,7 +55,7 @@ export const translations = {
     "voice.stop": "STOP",
     "voice.listening": "LISTENING...",
     "voice.processing": "PROCESSING...",
-    "chat.placeholder": "TYPE HERE...",
+    "chat.placeholder": "ASK QUESTIONS OR /HELP FOR COMMANDS...",
     "chat.send": "SEND",
     "chat.status": "STATUS",
     "chat.encrypted": "ENCRYPTED",
@@ -75,6 +76,7 @@ export const translations = {
     "project.terminate": "[TERMINATE]",
     "project.downloadSrc": "DOWNLOAD_SRC",
     "project.initializeDemo": "INITIALIZE_DEMO",
+    "project.viewOnAppStore": "VIEW_ON_APP_STORE",
     "project.dataPacket": "DECIPHERED_DATA_PACKET",
     "project.assignment": "ASSIGNMENT",
     "project.briefing": "INTELLIGENCE_BRIEFING",
@@ -99,7 +101,7 @@ export const translations = {
     "voice.stop": "DUR",
     "voice.listening": "DİNLİYOR...",
     "voice.processing": "İŞLENİYOR...",
-    "chat.placeholder": "BURAYA YAZ...",
+    "chat.placeholder": "SORU SOR VEYA /HELP İLE KOMUTLARI GÖR...",
     "chat.send": "GÖNDER",
     "chat.status": "DURUM",
     "chat.encrypted": "ŞİFRELİ",
@@ -120,6 +122,7 @@ export const translations = {
     "project.terminate": "[SONLANDIR]",
     "project.downloadSrc": "KAYNAK_İNDİR",
     "project.initializeDemo": "DEMO_BAŞLAT",
+    "project.viewOnAppStore": "APP_STORE'DA_GÖR",
     "project.dataPacket": "ŞİFRESİ_ÇÖZÜLMÜŞ_VERİ_PAKETİ",
     "project.assignment": "GÖREV",
     "project.briefing": "İSTİHBARAT_BRİFİNGİ",
