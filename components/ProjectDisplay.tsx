@@ -35,6 +35,12 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
   const impact =
     language === "tr" && project.impactTr ? project.impactTr : project.impact;
 
+  // Detect if demoUrl is an App Store link
+  const isAppStoreLink = project.demoUrl?.includes("apps.apple.com") || project.demoUrl?.includes("itunes.apple.com");
+  const demoButtonText = isAppStoreLink
+    ? translate("project.viewOnAppStore")
+    : translate("project.initializeDemo");
+
   return (
     <div className="glass-terminal border border-[#00FF41] matrix-border-glow h-full w-full flex flex-col mono relative overflow-hidden">
       {/* Corner Brackets */}
@@ -214,7 +220,7 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
             }`}
           >
             <span className="relative z-10">
-              {translate("project.initializeDemo")}
+              {demoButtonText}
             </span>
             <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-500"></div>
             {buttonFlash === "demo" && (
@@ -229,7 +235,7 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
             }`}
           >
             <span className="relative z-10">
-              {translate("project.initializeDemo")}
+              {demoButtonText}
             </span>
             <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-500"></div>
             {buttonFlash === "demo-disabled" && (
