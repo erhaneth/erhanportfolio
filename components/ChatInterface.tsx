@@ -6,6 +6,32 @@ import { useLanguage } from "../contexts/LanguageContext";
 import ReactMarkdown from "react-markdown";
 import VoiceButton from "./VoiceButton";
 
+// Drag-to-resize hook for mobile chat
+const useResizable = (initial: number, min: number, max: number) => {
+  const [height, setHeight] = useState(initial);
+  const [isDragging, setIsDragging] = useState(false);
+  const start = useRef({ y: 0, h: 0 });
+
+  const handlers = {
+    onPointerDown: (e: React.PointerEvent) => {
+      e.preventDefault();
+      start.current = { y: e.clientY, h: height };
+      setIsDragging(true);
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      if (!isDragging) return;
+      setHeight(Math.min(max, Math.max(min, start.current.h + start.current.y - e.clientY)));
+    },
+    onPointerUp: (e: React.PointerEvent) => {
+      setIsDragging(false);
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    },
+  };
+
+  return { height, isDragging, handlers };
+};
+
 interface ChatInterfaceProps {
   messages: Message[];
   isLoading: boolean;
@@ -43,10 +69,100 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     new Set()
   );
   const scrollRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showVoicePulse, setShowVoicePulse] = useState(false);
+  const [showCommandSuggestions, setShowCommandSuggestions] = useState(false);
+  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
+
+  // Available slash commands
+  const availableCommands = [
+    { command: "/help", description: "Show help panel with all commands" },
+    { command: "/clear", description: "Clear conversation and refresh" },
+  ];
+
+  // Check if mobile on mount and resize
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Show voice button pulse after 30 seconds if voice hasn't been used
+  useEffect(() => {
+    if (isVoiceEnabled) {
+      setShowVoicePulse(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setShowVoicePulse(true);
+    }, 30000); // 30 seconds
+
+    return () => clearTimeout(timer);
+  }, [isVoiceEnabled]);
+
+  // Resizable chat - min 200px, max 85vh
+  const { height, isDragging, handlers } = useResizable(
+    400, // initial height
+    200, // min height
+    typeof window !== 'undefined' ? window.innerHeight * 0.85 : 600 // max height (85vh)
+  );
+
+  // Filter commands based on input
+  const filteredCommands = React.useMemo(() => {
+    if (!input.startsWith("/")) return [];
+    return availableCommands.filter((cmd) =>
+      cmd.command.toLowerCase().startsWith(input.toLowerCase())
+    );
+  }, [input, availableCommands]);
+
+  // Handle input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInput(value);
+
+    // Show suggestions when typing "/" commands
+    if (value.startsWith("/") && value.length > 0) {
+      setShowCommandSuggestions(true);
+      setSelectedCommandIndex(0);
+    } else {
+      setShowCommandSuggestions(false);
+    }
+  };
+
+  // Handle command selection
+  const selectCommand = (command: string) => {
+    setInput(command);
+    setShowCommandSuggestions(false);
+    setSelectedCommandIndex(0);
+  };
+
+  // Handle keyboard navigation in command suggestions
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showCommandSuggestions || filteredCommands.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedCommandIndex((prev) =>
+        prev < filteredCommands.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedCommandIndex((prev) => (prev > 0 ? prev - 1 : prev));
+    } else if (e.key === "Enter" && showCommandSuggestions) {
+      e.preventDefault();
+      selectCommand(filteredCommands[selectedCommandIndex].command);
+    } else if (e.key === "Escape") {
+      setShowCommandSuggestions(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
+    setShowCommandSuggestions(false);
     onSendMessage(input);
     setInput("");
   };
@@ -87,7 +203,25 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0 glass-terminal border border-[#003B00] shadow-[0_0_20px_rgba(0,59,0,0.5)]">
+    <div
+      ref={containerRef}
+      className={`flex flex-col glass-terminal border border-[#003B00] shadow-[0_0_20px_rgba(0,59,0,0.5)] lg:h-full ${
+        isMobile ? `fixed bottom-0 left-0 right-0 ${isVoiceEnabled ? 'z-[110]' : 'z-30'}` : ''
+      }`}
+      style={{ height: isMobile ? `${height}px` : undefined }}
+    >
+      {/* Drag Handle - Mobile Only */}
+      <div
+        {...handlers}
+        className={`lg:hidden flex items-center justify-center py-2 cursor-ns-resize touch-none select-none border-b border-[#003B00] ${
+          isDragging ? 'bg-[#00FF41]/20' : 'bg-[#003B00]/40 active:bg-[#003B00]/60'
+        } transition-colors`}
+      >
+        <div className="flex flex-col items-center gap-0.5">
+          <div className="w-12 h-1.5 rounded-full bg-[#00FF41]/70" />
+        </div>
+      </div>
+
       <div className="bg-[#003B00]/60 px-2 sm:px-4 py-2 flex justify-between items-center border-b border-[#00FF41] flex-shrink-0">
         <div className="flex items-center gap-2 sm:gap-4">
           <div className="flex gap-1">
@@ -298,7 +432,31 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       >
         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#00FF41]/20 to-transparent"></div>
 
-        <div className="flex items-center gap-2 sm:gap-3 px-1 sm:px-2">
+        <div className="flex items-center gap-2 sm:gap-3 px-1 sm:px-2 relative">
+          {/* Command Suggestions Dropdown */}
+          {showCommandSuggestions && filteredCommands.length > 0 && (
+            <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#020202] border border-[#00FF41] shadow-[0_0_20px_rgba(0,255,65,0.3)] z-50 max-h-32 overflow-y-auto">
+              {filteredCommands.map((cmd, index) => (
+                <div
+                  key={cmd.command}
+                  onClick={() => selectCommand(cmd.command)}
+                  className={`px-4 py-2 cursor-pointer transition-colors ${
+                    index === selectedCommandIndex
+                      ? "bg-[#00FF41]/20 border-l-2 border-[#00FF41]"
+                      : "hover:bg-[#003B00]/50"
+                  }`}
+                >
+                  <div className="text-[#00FF41] text-sm font-bold mono">
+                    {cmd.command}
+                  </div>
+                  <div className="text-[#008F11] text-xs mt-0.5">
+                    {cmd.description}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Normal input mode */}
           {!isVoiceEnabled && !isVoiceConnecting ? (
             <>
@@ -308,23 +466,32 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               <input
                 type="text"
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
                 disabled={isLoading}
                 placeholder={translate("chat.placeholder")}
                 aria-label="Type your message"
-                className="flex-1 bg-transparent border-none py-2 text-xs sm:text-sm text-[#00FF41] focus:outline-none placeholder:text-[#003B00] mono caret-[#00FF41]"
+                className="flex-1 bg-transparent border-none py-2 text-base text-[#00FF41] focus:outline-none placeholder:text-[#003B00] mono caret-[#00FF41]"
               />
 
               {/* Voice button */}
               {onVoiceToggle && (
-                <VoiceButton
-                  isActive={false}
-                  isConnecting={false}
-                  onClick={onVoiceToggle}
-                  userVolume={userVolume}
-                  aiVolume={aiVolume}
-                  isAiTalking={isAiTalking}
-                />
+                <div className="relative">
+                  {showVoicePulse && (
+                    <div className="absolute -inset-1 bg-[#00FF41]/20 animate-pulse rounded" />
+                  )}
+                  <VoiceButton
+                    isActive={false}
+                    isConnecting={false}
+                    onClick={() => {
+                      setShowVoicePulse(false);
+                      onVoiceToggle();
+                    }}
+                    userVolume={userVolume}
+                    aiVolume={aiVolume}
+                    isAiTalking={isAiTalking}
+                  />
+                </div>
               )}
 
               {/* Send button */}

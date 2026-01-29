@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Project } from "../types";
 import { useLanguage } from "../contexts/LanguageContext";
 
@@ -12,6 +12,16 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
   onClose,
 }) => {
   const { translate, language } = useLanguage();
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [buttonFlash, setButtonFlash] = useState<string | null>(null);
+
+  const handleButtonClick = (buttonId: string, callback: () => void) => {
+    setButtonFlash(buttonId);
+    setTimeout(() => {
+      setButtonFlash(null);
+      callback();
+    }, 150);
+  };
 
   // Get translated content based on current language
   const title =
@@ -52,18 +62,35 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
       </div>
 
       <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 lg:space-y-8 overflow-y-auto flex-1 custom-scrollbar">
-        <div className="relative group grayscale hover:grayscale-0 transition-all duration-1000 border border-[#003B00]">
-          <div className="scanner-line"></div>
-          <div className="absolute inset-0 bg-[#00FF41]/10 pointer-events-none group-hover:opacity-0 transition-opacity"></div>
-          <img
-            src={project.imageUrl}
-            alt={title}
-            className="w-full h-40 sm:h-48 lg:h-56 object-cover border border-[#003B00]"
-          />
-          <div className="absolute bottom-2 right-2 text-[8px] bg-[#020202]/80 px-2 py-1 border border-[#003B00] text-[#008F11]">
-            COORD: 37.7749N / 122.4194W
+        {project.id === "zion-mainframe" ? (
+          // Live Mirror for ZION MAINFRAME - Recursive Iframe
+          <div className="relative group transition-all duration-1000 border border-[#003B00]">
+            <div className="scanner-line"></div>
+            <div className="absolute inset-0 bg-[#00FF41]/5 pointer-events-none group-hover:bg-[#00FF41]/20 transition-all z-10"></div>
+            <iframe
+              src={window.location.href}
+              className="w-full h-40 sm:h-48 lg:h-56 border border-[#003B00] pointer-events-none"
+              title="Live Portfolio Mirror"
+            />
+            <div className="absolute bottom-2 right-2 text-[8px] bg-[#020202]/80 px-2 py-1 border border-[#003B00] text-[#008F11] z-10">
+              LIVE MIRROR: RECURSIVE
+            </div>
           </div>
-        </div>
+        ) : (
+          // Static Image for other projects
+          <div className="relative group grayscale hover:grayscale-0 transition-all duration-1000 border border-[#003B00]">
+            <div className="scanner-line"></div>
+            <div className="absolute inset-0 bg-[#00FF41]/10 pointer-events-none group-hover:opacity-0 transition-opacity"></div>
+            <img
+              src={project.imageUrl}
+              alt={title}
+              className="w-full h-40 sm:h-48 lg:h-56 object-cover border border-[#003B00]"
+            />
+            <div className="absolute bottom-2 right-2 text-[8px] bg-[#020202]/80 px-2 py-1 border border-[#003B00] text-[#008F11]">
+              COORD: 37.7749N / 122.4194W
+            </div>
+          </div>
+        )}
 
         <div className="border-l-4 border-[#00FF41] pl-3 sm:pl-4">
           <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-[#00FF41] tracking-tighter matrix-text-glow">
@@ -143,32 +170,130 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
           <a
             href={project.githubUrl}
             target="_blank"
-            className="flex-1 text-center py-2.5 sm:py-3 border border-[#00FF41] text-[#00FF41] text-[10px] sm:text-xs font-bold hover:bg-[#00FF41] hover:text-[#0d0208] transition-all shadow-[0_0_10px_rgba(0,255,65,0.2)]"
+            onClick={(e) => {
+              e.preventDefault();
+              handleButtonClick("github", () => {
+                window.open(project.githubUrl, "_blank");
+              });
+            }}
+            className={`flex-1 text-center py-2.5 sm:py-3 border border-[#00FF41] text-[#00FF41] text-[10px] sm:text-xs font-bold hover:bg-[#00FF41] hover:text-[#0d0208] transition-all shadow-[0_0_10px_rgba(0,255,65,0.2)] relative overflow-hidden ${
+              buttonFlash === "github" ? "animate-glitch" : ""
+            }`}
           >
-            {translate("project.downloadSrc")}
+            <span className="relative z-10">{translate("project.downloadSrc")}</span>
+            {buttonFlash === "github" && (
+              <div className="absolute inset-0 bg-white animate-pulse z-0"></div>
+            )}
           </a>
         )}
-        {project.demoUrl ? (
+        {project.videoUrl ? (
+          <button
+            onClick={() => handleButtonClick("video", () => setShowVideoModal(true))}
+            className={`flex-1 py-2.5 sm:py-3 bg-[#00FF41] text-[#0d0208] text-[10px] sm:text-xs font-bold hover:bg-white hover:shadow-[0_0_20px_#00FF41] transition-all group relative overflow-hidden ${
+              buttonFlash === "video" ? "animate-glitch" : ""
+            }`}
+          >
+            <span className="relative z-10 flex items-center justify-center gap-2">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+              </svg>
+              {translate("project.watchDemo")}
+            </span>
+            <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-500"></div>
+            {buttonFlash === "video" && (
+              <div className="absolute inset-0 bg-white animate-pulse z-0"></div>
+            )}
+          </button>
+        ) : project.demoUrl ? (
           <a
             href={project.demoUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 text-center py-2.5 sm:py-3 bg-[#00FF41] text-[#0d0208] text-[10px] sm:text-xs font-bold hover:bg-white hover:shadow-[0_0_20px_#00FF41] transition-all group relative overflow-hidden"
+            onClick={(e) => {
+              e.preventDefault();
+              handleButtonClick("demo", () => {
+                window.open(project.demoUrl, "_blank");
+              });
+            }}
+            className={`flex-1 text-center py-2.5 sm:py-3 bg-[#00FF41] text-[#0d0208] text-[10px] sm:text-xs font-bold hover:bg-white hover:shadow-[0_0_20px_#00FF41] transition-all group relative overflow-hidden ${
+              buttonFlash === "demo" ? "animate-glitch" : ""
+            }`}
           >
             <span className="relative z-10">
               {demoButtonText}
             </span>
             <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-500"></div>
+            {buttonFlash === "demo" && (
+              <div className="absolute inset-0 bg-white animate-pulse z-0"></div>
+            )}
           </a>
         ) : (
-          <button className="flex-1 py-2.5 sm:py-3 bg-[#00FF41] text-[#0d0208] text-[10px] sm:text-xs font-bold hover:bg-white hover:shadow-[0_0_20px_#00FF41] transition-all group relative overflow-hidden">
+          <button
+            onClick={() => handleButtonClick("demo-disabled", () => {})}
+            className={`flex-1 py-2.5 sm:py-3 bg-[#00FF41] text-[#0d0208] text-[10px] sm:text-xs font-bold hover:bg-white hover:shadow-[0_0_20px_#00FF41] transition-all group relative overflow-hidden ${
+              buttonFlash === "demo-disabled" ? "animate-glitch" : ""
+            }`}
+          >
             <span className="relative z-10">
               {demoButtonText}
             </span>
             <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-500"></div>
+            {buttonFlash === "demo-disabled" && (
+              <div className="absolute inset-0 bg-white animate-pulse z-0"></div>
+            )}
           </button>
         )}
       </div>
+
+      {/* Video Modal */}
+      {showVideoModal && project.videoUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowVideoModal(false)}
+        >
+          {/* Blur backdrop */}
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+
+          {/* Modal content */}
+          <div
+            className="relative z-10 w-full max-w-4xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setShowVideoModal(false)}
+              className="absolute -top-12 right-0 text-[#00FF41] hover:text-white transition-colors flex items-center gap-2 text-sm font-bold"
+            >
+              <span>{translate("project.terminate")}</span>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Video container with matrix border */}
+            <div className="border-2 border-[#00FF41] shadow-[0_0_30px_rgba(0,255,65,0.4)] bg-black">
+              <div className="bg-[#00FF41] px-4 py-2 flex items-center gap-2">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-[#0d0208]/30" />
+                  <div className="w-3 h-3 rounded-full bg-[#0d0208]/30" />
+                  <div className="w-3 h-3 rounded-full bg-[#0d0208]/30" />
+                </div>
+                <span className="text-[10px] font-bold text-[#0d0208] tracking-widest uppercase ml-2">
+                  VIDEO_STREAM: {project.id}
+                </span>
+              </div>
+              <video
+                src={project.videoUrl}
+                controls
+                autoPlay
+                className="w-full aspect-video"
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

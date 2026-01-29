@@ -8,8 +8,8 @@ import { t } from "../utils/translations";
 const createWelcomeMessage = (lang: "en" | "tr"): Message => {
   const content =
     lang === "tr"
-      ? `[KİMLİK DOĞRULANDI: ERHAN GÜMÜŞ]\n[SİSTEM_KAYDI]: Ana sistem başarıyla erişildi.\nSelamlar. Ben Erhan'ın çalışmalarına giden sinir köprüsüyüm. Hangi bilgilere ulasmak icin yetki istersiniz?`
-      : `[IDENTITY VERIFIED: ERHAN GUMUS]\n[SYSTEM_LOG]: Mainframe accessed successfully.\nGreetings. I am the neural bridge to Erhan's work. What information would you like to be authorized to view?`;
+      ? `[KİMLİK DOĞRULANDI: ERHAN GÜMÜŞ]\n[SİSTEM_KAYDI]: Ana sistem başarıyla erişildi.\n\nSelamlar. Ben Erhan'ın çalışmalarına giden sinir köprüsüyüm. Hangi bilgilere ulaşmak için yetki istersiniz?\n\n💡 *İpucu: İşe alım uzmanıysanız, "Kim olduğunuzu" belirtin. Ayrıca benimle konuşabilirsiniz - ses butonunu deneyin!*`
+      : `[IDENTITY VERIFIED: ERHAN GUMUS]\n[SYSTEM_LOG]: Mainframe accessed successfully.\n\nGreetings. I am the neural bridge to Erhan's work. What information would you like to be authorized to view?\n\n💡 *Tip: If you're a recruiter, click "WHO ARE YOU?" below to unlock recruiter mode. You can also talk to me - try the voice button!*`;
 
   return {
     id: "welcome",
@@ -37,7 +37,9 @@ interface UseMessagesReturn {
     text: string,
     append?: boolean
   ) => void;
-  finalizeTransientMessages: () => void;
+  finalizeTransientMessages: (
+    onComplete?: (updatedMessages: Message[]) => void
+  ) => void;
 }
 
 export const useMessages = (
@@ -136,18 +138,26 @@ export const useMessages = (
     []
   );
 
-  const finalizeTransientMessages = useCallback(() => {
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.metadata?.transient
-          ? {
-              ...m,
-              metadata: { ...m.metadata, transient: false, fromVoice: true },
-            }
-          : m
-      )
-    );
-  }, []);
+  const finalizeTransientMessages = useCallback(
+    (onComplete?: (updatedMessages: Message[]) => void) => {
+      setMessages((prev) => {
+        const updated = prev.map((m) =>
+          m.metadata?.transient
+            ? {
+                ...m,
+                metadata: { ...m.metadata, transient: false, fromVoice: true },
+              }
+            : m
+        );
+        // Call onComplete with updated messages after state update
+        if (onComplete) {
+          setTimeout(() => onComplete(updated), 0);
+        }
+        return updated;
+      });
+    },
+    []
+  );
 
   const handleSendMessage = useCallback(
     async (

@@ -28,7 +28,7 @@ const showProjectTool: FunctionDeclaration = {
       projectId: {
         type: Type.STRING,
         description:
-          "The ID of the project to display. Options: tip-kurdish-keyboard, locked-in, secret-project-omega",
+          "The ID of the project to display. Options: tip-kurdish-keyboard, locked-in, love-letters, zion-mainframe",
       },
     },
     required: ["projectId"],
@@ -98,7 +98,9 @@ export const generateResponse = async (
   const cacheKey = getCacheKey(messages, userContext);
   const cached = responseCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    console.log("[Gemini] Using cached response");
+    if (import.meta.env.DEV) {
+      console.log("[Gemini] Using cached response");
+    }
     return cached.data;
   }
 
@@ -258,6 +260,7 @@ export const connectLive = async (
             unlockSecretProjectTool,
             requestResumeEmailTool,
             showGitHeatmapTool,
+            closeDisplayTool,
           ],
         },
       ],

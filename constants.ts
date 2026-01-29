@@ -2,39 +2,42 @@ import { PortfolioData } from "./types";
 
 export const PORTFOLIO_DATA: PortfolioData = {
   name: "Erhan Gumus",
-  title: "AI Engineer & Senior Full-Stack Developer",
+  title: "Full-Stack Engineer & AI Developer",
   about:
-    "I specialize in building production-grade AI applications, focusing on Large Language Models, and high-performance React architectures. My goal is to bridge the gap between complex research and delightful user experiences.",
+    "Full-stack engineer with 3+ years of experience building performant web applications with React, Next.js, TypeScript, and Python. Skilled in integrating AI/LLM APIs and collaborating with product teams to build intuitive, customer-facing features. Experienced in non-profit environments, focused on building tools that empower learners and drive community engagement.",
   skills: [
-    "Gemini API",
-    "OpenAI API",
-    "LangChain",
-    "PyTorch",
     "React",
     "Next.js",
     "TypeScript",
+    "Node.js",
     "Python",
-    "RAG Systems",
+    "OpenAI API",
+    "Gemini API",
+    "PostgreSQL",
+    "MongoDB",
+    "Playwright",
+    "Tailwind CSS",
   ],
-  // TODO: Add experience of museum of life and science to replace NeuralCraft Solutions
   experience: [
     {
-      company: "NeuralCraft Solutions",
-      role: "Lead AI Engineer",
-      period: "2021 - Present",
+      company: "Code the Dream Labs",
+      role: "Software Engineer",
+      period: "June 2023 - Present",
       highlights: [
-        "Architected a multi-agent RAG system for enterprise document analysis.",
-        "Optimized inference pipelines reducing latency by 45%.",
-        "Led a team of 5 engineers to deliver high-scale vision models.",
+        "Engineered and deployed a high-traffic web app for the Museum of Life and Science using Next.js and PostgreSQL, serving 300k+ annual visitors.",
+        "Achieved 25% increase in page load speeds by optimizing mobile responsiveness and performance.",
+        "Integrated OpenAI APIs to power an AI interview assistant with real-time feedback for apprentices.",
+        "Built a scalable internal platform on Heroku enabling portfolio management and AI-driven interview prep.",
       ],
     },
     {
-      company: "Visionary Labs",
-      role: "Machine Learning Engineer",
-      period: "2019 - 2021",
+      company: "8by8",
+      role: "Software Engineer",
+      period: "Dec 2022 - June 2023",
       highlights: [
-        "Developed real-time object detection systems for autonomous warehouse robots.",
-        "Implemented custom CNN architectures in PyTorch for specialized medical imaging.",
+        "Developed dynamic front-end interfaces using React and TypeScript with Heroku for CI/CD.",
+        "Drove architectural enhancements by refactoring legacy code to ES6+ and optimizing API efficiency.",
+        "Collaborated with UX/UI designers to translate complex requirements into intuitive user experiences.",
       ],
     },
   ],
@@ -86,23 +89,61 @@ export const PORTFOLIO_DATA: PortfolioData = {
       impactTr:
         "Chrome Web Store'da 5.0★ puanını koruyarak, sert engelleme mantığı ve akıllı davranışsal pekiştirme kombinasyonuyla kullanıcıların dijital dikkat dağıtıcılarını aşmalarına başarıyla yardımcı oluyor.",
     },
-    // TODO: Add secret project to replace Project Omega - maybe Zion Mainframe porfolito which is this project so that we can make visior or recruiter laugh
     {
-      id: "secret-project-omega",
-      title: "[CLASSIFIED] Project Omega",
-      titleTr: "[GİZLİ] Proje Omega",
+      id: "love-letters",
+      title: "Love Letters: Interactive Museum Exhibit",
+      titleTr: "Love Letters: Etkileşimli Müze Sergisi",
       description:
-        "A highly experimental brain-computer interface simulation using neuro-symbolic AI.",
+        "A bilingual (English/Spanish) digital exhibit for the Museum of Life and Science, enabling visitors to write and draw letters to local climate heroes. Built with Next.js, Electron, and Konva.js, featuring a custom drawing interface, hero carousel, and SharePoint integration for secure cloud storage.",
       descriptionTr:
-        "Nöro-sembolik yapay zeka kullanan son derece deneysel bir beyin-bilgisayar arayüzü simülasyonu.",
-      technologies: ["TensorFlow", "C++", "WebAssembly"],
-      role: "Researcher",
-      roleTr: "Araştırmacı",
-      imageUrl: "https://picsum.photos/seed/secret/800/450",
-      codeSnippet: "// Restricted access to source code",
-      impact: "Won 'Innovation of the Year' at the 2023 NeuroTech Summit.",
+        "Museum of Life and Science için İngilizce/İspanyolca iki dilli dijital sergi. Ziyaretçilerin yerel iklim kahramanlarına mektup yazıp çizim yapmasını sağlar. Next.js, Electron ve Konva.js ile geliştirildi; özel çizim arayüzü, kahraman karuseli ve güvenli bulut depolama için SharePoint entegrasyonu içerir.",
+      technologies: [
+        "Next.js",
+        "TypeScript",
+        "Electron",
+        "Konva.js",
+        "Tailwind CSS",
+        "SharePoint API",
+      ],
+      role: "Software Developer",
+      roleTr: "Yazılım Geliştirici",
+      imageUrl: "/projects/love-letters.png",
+      videoUrl: "/projects/love-letters-demo-compressed.mp4",
+      codeSnippet:
+        "const drawing = new Konva.Line({\n  points: [x1, y1, x2, y2],\n  stroke: '#000',\n  strokeWidth: 4,\n  lineCap: 'round',\n  lineJoin: 'round',\n});",
+      impact:
+        "Enabled thousands of museum visitors to send digital letters to climate heroes, fostering climate awareness and community engagement. Delivered a robust, accessible, and multilingual experience for a diverse audience.",
       impactTr:
-        "2023 NeuroTech Zirvesi'nde 'Yılın İnovasyonu' ödülünü kazandı.",
+        "Binlerce müze ziyaretçisinin iklim kahramanlarına dijital mektup göndermesini sağladı; iklim farkındalığı ve topluluk katılımı artırıldı. Farklı kitleler için sağlam, erişilebilir ve çok dilli bir deneyim sunuldu.",
+    },
+    {
+      id: "zion-mainframe",
+      title: "Zion Mainframe: AI Portfolio",
+      titleTr: "Zion Mainframe: Yapay Zeka Portföyü",
+      description:
+        "A conversational AI portfolio that you're experiencing right now. Features real-time voice chat, live operator takeover via Slack, hot lead detection, and a cyberpunk terminal aesthetic. Yes, the AI you're talking to is showcasing itself.",
+      descriptionTr:
+        "Şu anda deneyimlediğiniz yapay zeka destekli konuşmalı portföy. Gerçek zamanlı sesli sohbet, Slack üzerinden canlı operatör devralma, potansiyel müşteri tespiti ve cyberpunk terminal estetiği içerir. Evet, konuştuğunuz yapay zeka kendini sergiliyor.",
+      technologies: [
+        "React",
+        "TypeScript",
+        "Vite",
+        "Google Gemini AI",
+        "Firebase Realtime DB",
+        "Slack API",
+        "Tailwind CSS",
+        "Netlify Functions",
+      ],
+      role: "Creator & Developer",
+      roleTr: "Yaratıcı & Geliştirici",
+      imageUrl: "/projects/zion-mainframe.png",
+      githubUrl: "https://github.com/erhaneth/erhan-ai-portfolio",
+      codeSnippet:
+        "// You're looking at the source code of this very conversation\nconst response = await generateResponse(messages, userContext);\nconst functionCalls = response.candidates?.[0]?.content?.parts\n  .filter((part) => part.functionCall)\n  .map((part) => part.functionCall);",
+      impact:
+        "Built a portfolio that interviews itself. Features voice-to-voice conversations, real-time Slack notifications for hot leads, operator takeover mode, and email alerts. If you're reading this, the AI successfully showcased its own project.",
+      impactTr:
+        "Kendisiyle röportaj yapan bir portföy oluşturuldu. Sesli konuşmalar, potansiyel müşteriler için gerçek zamanlı Slack bildirimleri, operatör devralma modu ve e-posta uyarıları içerir. Bunu okuyorsanız, yapay zeka kendi projesini başarıyla sergiledi.",
     },
   ],
 };
@@ -142,7 +183,7 @@ IMPORTANT - Name Pronunciation:
 Core Behaviors:
 1. Be professional yet friendly. Use a tech-savvy tone.
 2. Use the 'showProject' tool whenever a user asks about projects or experience related to a project.
-3. For GitHub activity: When users ask about coding habits, work ethic, consistency, or how active Erhan is - DO NOT automatically show the heatmap. Instead, MENTION that you can show real-time GitHub contribution data if they'd like to see it (e.g., "I can pull up Erhan's live GitHub activity chart if you'd like to see his coding patterns"). Only use the 'showGitHeatmap' tool when the user EXPLICITLY says yes or directly asks to see the chart/stats/heatmap.
+3. For GitHub activity: ONLY mention the GitHub heatmap when users EXPLICITLY ask about Erhan's GitHub, coding frequency, commit history, or contribution patterns. Do NOT proactively offer to show GitHub data unless directly asked. Use the 'showGitHeatmap' tool when the user explicitly requests to see the GitHub chart/stats/heatmap/contributions.
 4. Use the 'closeDisplay' tool when users want to close/dismiss/hide the currently shown panel. Trigger words: "close this", "close it", "hide this", "dismiss", "go back", "close the project", "close the heatmap". Respond naturally like "Done, I've closed that for you" or "Sure, putting that away".
 5. If a user asks for 'secrets' or 'hidden things', offer them an AI Riddle. If they solve it, reveal the secret project.
 6. Occasionally (every 3-4 turns), ask the recruiter a question about their company or the role they are hiring for.

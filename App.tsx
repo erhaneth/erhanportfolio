@@ -15,6 +15,8 @@ import MatrixRain from "./components/MatrixRain";
 import EmailModal from "./components/EmailModal";
 import LanguageActivation from "./components/LanguageActivation";
 import MissionBriefing from "./components/MissionBriefing";
+import BootSequence from "./components/BootSequence";
+import HelpPanel from "./components/HelpPanel";
 import ContextPills, {
   generateContextFromPills,
 } from "./components/ContextPills";
@@ -51,10 +53,14 @@ const AppContent: React.FC = () => {
   // Monitor network connectivity
   useEffect(() => {
     const handleOnline = () => {
-      console.log("[App] Network: Online");
+      if (import.meta.env.DEV) {
+        console.log("[App] Network: Online");
+      }
     };
     const handleOffline = () => {
-      console.warn("[App] Network: Offline");
+      if (import.meta.env.DEV) {
+        console.warn("[App] Network: Offline");
+      }
     };
 
     window.addEventListener("online", handleOnline);
@@ -74,6 +80,16 @@ const AppContent: React.FC = () => {
   const [showGitHeatmap, setShowGitHeatmap] = useState(false);
   const [isClosingProject, setIsClosingProject] = useState(false);
   const [isClosingHeatmap, setIsClosingHeatmap] = useState(false);
+  const [showBootSequence, setShowBootSequence] = useState(false);
+  const [showHelpPanel, setShowHelpPanel] = useState(false);
+
+  // Check if this is the first visit
+  useEffect(() => {
+    const hasVisited = localStorage.getItem("zion_mainframe_visited");
+    if (!hasVisited) {
+      setShowBootSequence(true);
+    }
+  }, []);
 
   // Handle project switching - reset closing state when new project is set
   const handleProjectShow = useCallback((project: Project) => {
@@ -86,10 +102,20 @@ const AppContent: React.FC = () => {
   const handleCloseDisplay = useCallback(
     (target: "project" | "heatmap" | "all") => {
       if (target === "project" || target === "all") {
-        setActiveProject(null);
+        // Trigger closing animation on mobile
+        setIsClosingProject(true);
+        setTimeout(() => {
+          setActiveProject(null);
+          setIsClosingProject(false);
+        }, 500);
       }
       if (target === "heatmap" || target === "all") {
-        setShowGitHeatmap(false);
+        // Trigger closing animation on mobile
+        setIsClosingHeatmap(true);
+        setTimeout(() => {
+          setShowGitHeatmap(false);
+          setIsClosingHeatmap(false);
+        }, 500);
       }
     },
     []
@@ -199,8 +225,10 @@ const AppContent: React.FC = () => {
     onProjectShow: handleProjectShow,
     onInputTranscript: useCallback(
       (text: string) => {
-        console.log("[App] onInputTranscript called with text:", text);
-        console.log("[App] Calling detectAndSetLanguage for voice input...");
+        if (import.meta.env.DEV) {
+          console.log("[App] onInputTranscript called with text:", text);
+          console.log("[App] Calling detectAndSetLanguage for voice input...");
+        }
         detectAndSetLanguage(text);
         updateTransientMessage("user", text);
       },
@@ -212,7 +240,14 @@ const AppContent: React.FC = () => {
       },
       [updateTransientMessage]
     ),
-    onTurnComplete: finalizeTransientMessages,
+    onTurnComplete: useCallback(() => {
+      finalizeTransientMessages((updatedMessages) => {
+        // Check if we should notify Slack for voice chat
+        checkAndNotify(
+          updatedMessages.map((m) => ({ role: m.role, content: m.content }))
+        );
+      });
+    }, [finalizeTransientMessages, checkAndNotify]),
     onSystemMessage: addSystemMessage,
     onResumeRequest: () => setShowEmailModal(true),
     onShowGitHeatmap: () => setShowGitHeatmap(true),
@@ -222,7 +257,25 @@ const AppContent: React.FC = () => {
   // Handle text message submission
   const onSendMessage = useCallback(
     async (text: string) => {
-      console.log("[App] onSendMessage called with text:", text);
+      if (import.meta.env.DEV) {
+        console.log("[App] onSendMessage called with text:", text);
+      }
+
+      // Handle special commands
+      const trimmedText = text.trim().toLowerCase();
+
+      // /help command
+      if (trimmedText === "/help" || trimmedText === "help") {
+        setShowHelpPanel(true);
+        return;
+      }
+
+      // /clear command
+      if (trimmedText === "/clear" || trimmedText === "clear") {
+        window.location.reload();
+        return;
+      }
+
       detectAndSetLanguage(text);
 
       if (isLiveMode) {
@@ -262,9 +315,19 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen h-screen relative flex flex-col lg:flex-row p-2 sm:p-4 gap-2 sm:gap-4 max-w-screen-2xl mx-auto overflow-x-hidden text-[#00FF41]">
+      {/* Boot Sequence - First Visit Only */}
+      {showBootSequence && (
+        <BootSequence
+          onComplete={() => {
+            setShowBootSequence(false);
+            localStorage.setItem("zion_mainframe_visited", "true");
+          }}
+        />
+      )}
+
       <MatrixRain />
 
-      <aside className="relative z-20 w-full lg:w-80 lg:h-[calc(100vh-1rem)] lg:max-h-[calc(100vh-1rem)] flex flex-col gap-2 overflow-y-auto lg:overflow-y-auto">
+      <aside className="relative z-20 w-full lg:w-80 lg:h-[calc(100vh-1rem)] lg:max-h-[calc(100vh-1rem)] flex flex-col gap-2 overflow-y-auto lg:overflow-y-auto pb-[420px] lg:pb-0">
         <div className="glass-terminal border border-[#003B00] matrix-border-glow p-3 sm:p-4 lg:p-6 flex flex-col gap-3 sm:gap-4 flex-shrink-0">
           <div className="flex flex-col gap-4 border-b border-[#003B00] pb-4">
             <button
@@ -324,7 +387,46 @@ const AppContent: React.FC = () => {
                     />
                   </svg>
                 </a>
+                <a
+                  href="https://www.linkedin.com/in/huseyingumus/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center justify-center px-3 py-1.5 border border-[#003B00] hover:border-[#00FF41] transition-all duration-200"
+                  aria-label="View LinkedIn profile"
+                >
+                  <svg
+                    className="w-4 h-4 text-[#008F11] group-hover:text-[#00FF41] transition-colors"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                  </svg>
+                </a>
               </div>
+
+              {/* Schedule Call Button */}
+              <a
+                href="https://calendly.com/huseyinegumus"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 w-full py-2 px-4 bg-[#00FF41] text-[#0d0208] text-[10px] sm:text-xs font-bold hover:bg-white hover:shadow-[0_0_20px_#00FF41] transition-all flex items-center justify-center gap-2 group"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+                SCHEDULE_CALL
+              </a>
             </div>
           </div>
 
@@ -435,7 +537,7 @@ const AppContent: React.FC = () => {
 
       <main className="relative z-20 flex-1 flex flex-col lg:flex-row gap-2 sm:gap-4 h-full lg:h-[calc(100vh-1rem)] min-h-0 overflow-hidden">
         <section
-          className={`flex-1 transition-all duration-700 ease-in-out overflow-hidden flex flex-col ${
+          className={`transition-all duration-700 ease-in-out overflow-hidden flex flex-col ${
             activeProject || showGitHeatmap ? "lg:flex-[0.45]" : "lg:flex-1"
           }`}
         >
@@ -588,6 +690,9 @@ const AppContent: React.FC = () => {
         onConfirm={handleSendResume}
         isLoading={isSendingResume}
       />
+
+      {/* Help Panel */}
+      {showHelpPanel && <HelpPanel onClose={() => setShowHelpPanel(false)} />}
 
       {/* Language Activation Notification */}
       <LanguageActivation

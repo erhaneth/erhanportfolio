@@ -193,19 +193,36 @@ export const notifyHotLead = async (
   };
 
   try {
-    const response = await fetch("/.netlify/functions/slack-webhook", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    // Send both Slack and email notifications in parallel
+    const [slackResponse, emailResponse] = await Promise.all([
+      fetch("/.netlify/functions/slack-webhook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }),
+      fetch("/.netlify/functions/notify-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          intentSummary,
+          signals,
+          conversationHistory,
+        }),
+      }),
+    ]);
 
-    if (!response.ok) {
-      console.error("[LiveSession] Slack webhook failed:", response.status);
+    if (!slackResponse.ok) {
+      console.error("[LiveSession] Slack webhook failed:", slackResponse.status);
     }
 
-    return response.ok;
+    if (!emailResponse.ok) {
+      console.error("[LiveSession] Email notification failed:", emailResponse.status);
+    }
+
+    return slackResponse.ok || emailResponse.ok;
   } catch (error) {
-    console.error("[LiveSession] Failed to notify Slack:", error);
+    console.error("[LiveSession] Failed to notify:", error);
     return false;
   }
 };
