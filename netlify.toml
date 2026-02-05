@@ -4,8 +4,6 @@
 
 [build.environment]
   NODE_VERSION = "18"
-  # Disable smart secret detection - Firebase client keys are designed to be public
-  SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
 
 [dev]
   command = "npm run dev"
@@ -29,5 +27,3 @@
   from = "/admin3873/*"
   to = "/index.html"
   status = 200
-
-
